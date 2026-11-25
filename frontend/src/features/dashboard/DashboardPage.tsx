@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthContext';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 import { api, isApiError } from '@/services/api';
 import { AssessmentStatusResponse, VotingStatusResponse, BordaResponse, ElectionSummary } from '@/types';
 import { CheckCircle2, Clock, Check, RefreshCw, AlertCircle, Users, Vote, Layers, PlusCircle } from 'lucide-react';
@@ -242,7 +243,7 @@ export const DashboardPage: React.FC = () => {
                 data-testid={`electorate-item-${e.username}`}
               >
                 <span className="text-slate-700">
-                  {e.name}
+                  {getDmDisplayName({ username: e.username, name: e.name })}
                   <span className="ml-1 text-xs text-slate-400">
                     ({e.role === 'chair' ? 'Ketua' : 'Anggota'})
                   </span>
@@ -289,7 +290,7 @@ export const DashboardPage: React.FC = () => {
     <div className="space-y-6">
       {/* Welcome */}
       <div className="bg-gradient-to-r from-navy-800 to-navy-900 text-white rounded-xl p-6 shadow-lg">
-        <h1 className="text-3xl font-bold mb-2">Selamat Datang, {user?.name}</h1>
+        <h1 className="text-3xl font-bold mb-2">Selamat Datang, {user ? getDmDisplayName({ username: user.username, name: user.name }) : 'Pengguna'}</h1>
         <p className="text-slate-300">{getRoleDesc(user?.role)}</p>
       </div>
 
@@ -470,7 +471,7 @@ export const DashboardPage: React.FC = () => {
               <tbody>
                 {assessmentStatus.panel.map((p) => (
                   <tr key={p.user_id} className="border-b border-slate-200 hover:bg-slate-50">
-                    <td className="px-6 py-3">{p.name}</td>
+                    <td className="px-6 py-3">{getDmDisplayName({ username: p.username, name: p.name })}</td>
                     <td className="px-6 py-3 text-slate-600">
                       {p.role === 'chair' ? 'Ketua Panel' : 'Anggota Panel'}
                     </td>
@@ -535,7 +536,7 @@ export const DashboardPage: React.FC = () => {
             <span className="font-bold">{votingStatus.ratified_decision.candidate_name}</span>
           </p>
           <p className="text-sm">
-            Disahkan oleh {votingStatus.ratified_decision.approved_by_name} pada{' '}
+            Disahkan oleh {getDmDisplayName(votingStatus.ratified_decision.approved_by_name)} pada{' '}
             {new Date(votingStatus.ratified_decision.approved_at).toLocaleString('id-ID')}
           </p>
         </div>

@@ -33,6 +33,16 @@ describe('LoginPage Comprehensive Suite', () => {
     isAuthMock = false;
   });
 
+  it('0. Menampilkan akun demonstrasi dengan identitas kelembagaan 1990-an', () => {
+    renderLogin();
+    expect(screen.getByText(/Ketua Panel — Perwakilan MPR:/)).toBeInTheDocument();
+    expect(screen.getByText(/Anggota Panel 1 — Perwakilan DPR:/)).toBeInTheDocument();
+    expect(screen.getByText(/Anggota Panel 2 — Utusan Daerah:/)).toBeInTheDocument();
+    expect(screen.getByText(/dm1 \/ password123/)).toBeInTheDocument();
+    expect(screen.getByText(/dm2 \/ password123/)).toBeInTheDocument();
+    expect(screen.getByText(/dm3 \/ password123/)).toBeInTheDocument();
+  });
+
   // 1. Input kosong
   it('1. Menampilkan validasi inline saat username dan password kosong', async () => {
     const user = userEvent.setup();

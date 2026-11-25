@@ -96,9 +96,9 @@ describe('BordaResultsPage', () => {
     ).toBeInTheDocument();
 
     expect(await screen.findByText('1 / 3 panelis')).toBeInTheDocument();
-    expect(screen.getByText('Ketua Panel — DM Satu')).toBeInTheDocument();
-    expect(screen.getByText('Anggota Panel — DM Dua')).toBeInTheDocument();
-    expect(screen.getByText('Anggota Panel — DM Tiga')).toBeInTheDocument();
+    expect(screen.getByText('Ketua Panel — Perwakilan MPR')).toBeInTheDocument();
+    expect(screen.getByText('Anggota Panel — Perwakilan DPR')).toBeInTheDocument();
+    expect(screen.getByText('Anggota Panel — Utusan Daerah')).toBeInTheDocument();
     expect(screen.getByText('Sudah difinalisasi')).toBeInTheDocument();
     expect(screen.getAllByText('Draft — belum finalisasi')).toHaveLength(2);
     expect(screen.getByRole('button', { name: /Buka Halaman Penilaian/i })).toBeInTheDocument();

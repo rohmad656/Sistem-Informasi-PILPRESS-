@@ -20,6 +20,7 @@ import {
 import { api, describeApiError, isApiError } from '@/services/api';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 import type {
   VotingStatusResponse,
   Candidate,
@@ -246,21 +247,24 @@ const OfficialDecisionReport: React.FC<OfficialReportProps> = ({
   statusLabel,
 }) => {
   const printedAt = new Date();
-  const electorateByUsername = (username: string) => electorate.find((v) => v.username === username)?.name ?? null;
+  const electorateByUsername = (username: string) => {
+    const entry = electorate.find((v) => v.username === username);
+    return entry ? getDmDisplayName({ username: entry.username, name: entry.name }) : null;
+  };
   const panelists = [
     {
       username: 'dm1',
-      role: 'Ketua Panel (DM1)',
-      name: electorateByUsername('dm1') ?? decision.approved_by_name ?? PANEL_PLACEHOLDER,
+      role: 'Ketua Panel',
+      name: electorateByUsername('dm1') ?? getDmDisplayName({ name: decision.approved_by_name, approved_by: decision.approved_by }, PANEL_PLACEHOLDER),
     },
     {
       username: 'dm2',
-      role: 'Anggota Panel (DM2)',
+      role: 'Anggota Panel 1',
       name: electorateByUsername('dm2') ?? PANEL_PLACEHOLDER,
     },
     {
       username: 'dm3',
-      role: 'Anggota Panel (DM3)',
+      role: 'Anggota Panel 2',
       name: electorateByUsername('dm3') ?? PANEL_PLACEHOLDER,
     },
   ];
@@ -350,7 +354,7 @@ const OfficialDecisionReport: React.FC<OfficialReportProps> = ({
             </tr>
             <tr>
               <th scope="row" className="py-1.5 text-left font-semibold text-slate-600">Disahkan Oleh</th>
-              <td className="py-1.5 text-navy-800">{decision.approved_by_name}</td>
+              <td className="py-1.5 text-navy-800">{getDmDisplayName({ name: decision.approved_by_name, approved_by: decision.approved_by })}</td>
             </tr>
           </tbody>
         </table>
@@ -429,7 +433,7 @@ const OfficialDecisionReport: React.FC<OfficialReportProps> = ({
       {/* 8. Hasil Penilaian TOPSIS */}
       <section className="report-section mt-6">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-navy-800">
-          8. Hasil Penilaian TOPSIS{topsis ? ` — Penilaian ${topsis.dm_name}` : ''}
+          8. Hasil Penilaian TOPSIS{topsis ? ` — Penilaian ${getDmDisplayName(topsis.dm_name)}` : ''}
         </h3>
         <p className="mb-2 text-xs italic text-slate-500">
           Catatan metodologi: hasil TOPSIS di bawah dihitung ulang dengan metodologi terkini untuk
@@ -551,8 +555,8 @@ const OfficialDecisionReport: React.FC<OfficialReportProps> = ({
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
           {panelists.map((panelist) => (
             <div key={panelist.username} className="text-center">
-              <p className="min-h-[2.5rem] text-sm font-semibold text-navy-800">{panelist.name}</p>
-              <p className="mt-1 text-xs text-slate-600">{panelist.role}</p>
+              <p className="min-h-[2.5rem] text-xs text-slate-600">{panelist.role}</p>
+              <p className="mt-1 text-sm font-semibold text-navy-800">{panelist.name}</p>
               <div className="mt-12 border-t border-slate-500 pt-2 text-xs text-slate-500">
                 Tanda tangan
               </div>
@@ -1010,7 +1014,7 @@ export const FinalDecisionPage: React.FC = () => {
           <div className="space-y-3 text-sm">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
               <span className="text-slate-600">Disahkan oleh</span>
-              <span className="text-right font-semibold text-navy-800">{decision.approved_by_name}</span>
+              <span className="text-right font-semibold text-navy-800">{getDmDisplayName({ name: decision.approved_by_name, approved_by: decision.approved_by })}</span>
             </div>
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
               <span className="text-slate-600">Waktu Pengesahan</span>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/services/api';
 import { DecisionHistoryRound, CandidateTally } from '@/types';
@@ -105,7 +106,7 @@ export const DecisionHistoryPage: React.FC = () => {
                       </span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      Dibuka oleh: {round.opened_by_name}
+                      Dibuka oleh: {getDmDisplayName(round.opened_by_name)}
                     </p>
                   </div>
                   {getStatusBadge(round.status)}
@@ -208,7 +209,7 @@ export const DecisionHistoryPage: React.FC = () => {
             <div className="text-center">
               <CheckCircle2 className="w-12 h-12 text-white mx-auto mb-2" />
               <p className="text-sm font-medium">
-                Disahkan oleh {finalDecision.approved_by_name}
+                Disahkan oleh {getDmDisplayName(finalDecision.approved_by_name)}
               </p>
               <p className="text-xs text-green-200">
                 {new Date(finalDecision.approved_at).toLocaleDateString('id-ID')}

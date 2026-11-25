@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { api, describeApiError, isApiError } from '@/services/api';
 import { useAuth } from '@/features/auth/AuthContext';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 import { TopsisRankingItem, TopsisCriterionBreakdown } from '@/types';
 
 const RANK_COLORS: Record<number, string> = {
@@ -105,7 +106,7 @@ export const TopsisResultsPage: React.FC = () => {
           Nilai preferensi alternatif berdasarkan metode TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution).
         </p>
         <div className="flex items-center gap-2 mt-2 text-sm text-slate-500">
-          <span className="font-medium text-navy-700">{data.dm_name}</span>
+          <span className="font-medium text-navy-700">{getDmDisplayName(data.dm_name)}</span>
           <span>·</span>
           <span className="capitalize">{user?.role === 'chair' ? 'Ketua Panel' : 'Anggota Panel'}</span>
         </div>

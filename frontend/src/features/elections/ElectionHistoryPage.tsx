@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 import { useNavigate } from 'react-router-dom';
 import { api, describeApiError } from '@/services/api';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -271,7 +272,7 @@ export const ElectionHistoryPage: React.FC = () => {
                     <BadgeCheck className="w-4 h-4" /> Keputusan Final: {detailFinal.candidate_name}
                   </p>
                   <p className="text-slate-600 mt-1">
-                    {Number(detailFinal.percentage).toFixed(2)}% · disahkan oleh {detailFinal.approved_by_name}
+                    {Number(detailFinal.percentage).toFixed(2)}% · disahkan oleh {getDmDisplayName(detailFinal.approved_by_name)}
                   </p>
                 </div>
               )}

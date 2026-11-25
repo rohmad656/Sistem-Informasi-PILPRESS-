@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 import {
   LayoutDashboard,
   Users,
@@ -175,7 +176,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* User & Logout */}
         <div className="p-4 border-t border-navy-700 space-y-2">
           <div className={`text-xs mb-3 ${sidebarOpen ? '' : 'md:hidden'}`}>
-            <p className="font-semibold text-gold-accent">{user?.name}</p>
+            <p className="font-semibold text-gold-accent">{user ? getDmDisplayName({ username: user.username, name: user.name }) : 'Pengguna'}</p>
             <p className="text-slate-400">{getRoleBadge(user?.role)}</p>
           </div>
           <button

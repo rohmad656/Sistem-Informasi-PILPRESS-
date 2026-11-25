@@ -155,6 +155,20 @@ Backend mempertahankan presisi penuh `final_score`; frontend menampilkan 6 angka
 
 SAW tetap tersedia sebagai endpoint legacy (`/api/results/saw/me`) dan fungsi `calculateSaw()` untuk perbandingan; bukan metode aktif.
 
+### Identitas Decision Maker
+
+Decision Maker pada aplikasi ini merepresentasikan unsur kelembagaan dalam simulasi pemilihan Presiden Republik Indonesia era 1990-an. MPR merupakan lembaga yang berwenang memilih Presiden pada konteks tersebut, sedangkan DPR dan Utusan Daerah digunakan sebagai representasi unsur keanggotaan dalam simulasi.
+
+Pemetaan identitas tampilan (lapisan presentasi; username, ID, role, dan nama di database tidak diubah):
+
+| Username | Nama tampilan | Posisi |
+|---|---|---|
+| `dm1` | Perwakilan MPR | Ketua Panel |
+| `dm2` | Perwakilan DPR | Anggota Panel 1 |
+| `dm3` | Utusan Daerah | Anggota Panel 2 |
+
+Simulasi ini bukan rekonstruksi komposisi atau prosedur pemilihan yang sepenuhnya identik dengan praktik historis.
+
 ---
 
 ## Pengujian

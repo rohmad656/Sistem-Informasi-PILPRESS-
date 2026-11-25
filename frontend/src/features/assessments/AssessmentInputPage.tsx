@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthContext';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 import { useCandidates, useCriteria, useMyAssessments, useSaveAssessments } from './useAssessmentData';
 
 type ScoreMatrix = Record<string, number | undefined>;
@@ -102,7 +103,7 @@ export const AssessmentInputPage: React.FC = () => {
       {/* Header */}
       <div className="bg-gradient-to-r from-navy-800 to-navy-900 text-white rounded-xl p-6 shadow-lg">
         <h1 className="text-2xl font-bold mb-2">Penilaian Kandidat</h1>
-        <p className="text-slate-300 mb-4">{user?.name}</p>
+        <p className="text-slate-300 mb-4">{user ? getDmDisplayName({ username: user.username, name: user.name }) : 'Pengguna'}</p>
         <div className="flex items-center justify-between text-sm">
           <div>
             <p className="text-slate-400">Kelengkapan Penilaian</p>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ElectorateVoterStatus } from '@/types';
 import { Check, Clock, UserCheck, Users } from 'lucide-react';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 
 interface ElectorateMonitorProps {
   electorate: ElectorateVoterStatus[];
@@ -111,7 +112,7 @@ export const ElectorateMonitor: React.FC<ElectorateMonitorProps> = ({
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-800 leading-snug">
-                    {voter.name}
+                    {getDmDisplayName({ username: voter.username, name: voter.name })}
                   </p>
                   <p className="text-xs text-slate-500">
                     {roleLabel} ({voter.username})

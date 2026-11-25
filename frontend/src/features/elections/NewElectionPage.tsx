@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, describeApiError } from '@/services/api';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 import { AlertTriangle, ArrowLeft, Check, ChevronRight, Lock, PlusCircle, ShieldCheck, Users } from 'lucide-react';
 
 /** Label peran panel resmi — identitas diverifikasi backend dari tabel users. */
@@ -253,7 +254,7 @@ export const NewElectionPage: React.FC = () => {
                   {electorate.length > 0 ? (
                     electorate.map((member) => (
                       <li key={member.user_id} className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-slate-800">{member.name} ({member.username})</span>
+                        <span className="font-medium text-slate-800">{getDmDisplayName({ username: member.username, name: member.name })} ({member.username})</span>
                         <span className="text-xs text-slate-500">{roleLabel(member.role)}</span>
                       </li>
                     ))
@@ -315,7 +316,7 @@ export const NewElectionPage: React.FC = () => {
                     className="flex items-center justify-between"
                     data-testid={`confirm-electorate-${m.username}`}
                   >
-                    <span className="text-slate-800">{m.name} ({m.username})</span>
+                    <span className="text-slate-800">{getDmDisplayName({ username: m.username, name: m.name })} ({m.username})</span>
                     <span className="text-xs text-slate-500">{roleLabel(m.role)}</span>
                   </li>
                 ))}

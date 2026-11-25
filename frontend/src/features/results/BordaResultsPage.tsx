@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import { AlertTriangle, CheckCircle2, Clock, ClipboardCheck, RefreshCw, LoaderCircle } from 'lucide-react';
 import { api, describeApiError, isApiError } from '@/services/api';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 import { AssessmentStatusResponse, BordaRankingItem, BordaResponse } from '@/types';
 import { useToast } from '@/components/ui/Toast';
 
@@ -26,9 +27,9 @@ const RANK_COLORS: Record<number, string> = {
 const rankLabel = (rank: number) => `Peringkat ${rank}`;
 
 const DM_NAMES: Record<string, string> = {
-  '1': 'Ketua Panel (DM 1)',
-  '2': 'Anggota Panel 1 (DM 2)',
-  '3': 'Anggota Panel 2 (DM 3)',
+  '1': 'Perwakilan MPR (DM 1)',
+  '2': 'Perwakilan DPR (DM 2)',
+  '3': 'Utusan Daerah (DM 3)',
 };
 
 const roleLabel = (role: string, name: string) => {
@@ -94,7 +95,7 @@ const PanelistProgress: React.FC<PanelistProgressProps> = ({ status, isLoading }
           <li key={panelist.user_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-navy-800">
-                {roleLabel(panelist.role, panelist.name)}
+                {roleLabel(panelist.role, getDmDisplayName({ username: panelist.username, name: panelist.name }))}
               </p>
               <p className="text-xs text-slate-500">@{panelist.username}</p>
             </div>

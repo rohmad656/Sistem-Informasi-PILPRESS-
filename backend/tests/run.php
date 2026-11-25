@@ -2183,7 +2183,24 @@ it('P3-7: Borda belum tersedia sebelum seluruh DM memfinalisasi', function () {
     }
 });
 
-it('P3-8: calculateTopsisMe() menolak DM yang belum finalisasi (409)', function () {
+it('P3-8: calculateBorda() menolak sesi dengan <2 kandidat (409)', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    // Sesi 2: 3 DM sudah finalisasi, tapi hanya 1 kandidat finalized
+    $db->exec("INSERT INTO decision_sessions (id, title, description, status, current_round) VALUES (2, 'Sesi Satu Kandidat', 'Fixture regresi', 'assessment', 0)");
+    $db->exec("INSERT INTO candidates (id, session_id, name, is_finalized) VALUES (10, 2, 'Solo', 1)");
+    foreach ([1, 2, 3] as $u) {
+        $db->exec("INSERT INTO assessment_status (session_id, user_id, is_finalized, finalized_at) VALUES (2, $u, 1, '2026-01-02 10:00:00')");
+    }
+    try {
+        $app->calculateBorda(2);
+        throw new RuntimeException('Harusnya ditolak 409 karena <2 kandidat');
+    } catch (ApiError $e) {
+        assertEquals(409, $e->httpStatus, 'Status 409 saat kandidat <2');
+    }
+});
+
+it('P3-9: calculateTopsisMe() menolak DM yang belum finalisasi (409)', function () {
     $db = createTestDb();
     $app = new App($db);
     // Default: assessment_status is_finalized = 0

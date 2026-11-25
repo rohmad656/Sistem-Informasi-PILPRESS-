@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, describeApiError } from '@/services/api';
 import { RefreshCw, ScrollText, Search } from 'lucide-react';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 
 const PAGE_SIZE = 25;
 
@@ -206,7 +207,7 @@ export const AuditLogPage: React.FC = () => {
                   <tr key={log.id} className="hover:bg-slate-50/60" data-testid={`audit-row-${log.id}`}>
                     <td className="px-4 py-3 whitespace-nowrap text-slate-600">{formatDateTime(log.created_at)}</td>
                     <td className="px-4 py-3 whitespace-nowrap font-medium text-navy-800">
-                      {log.user_name ?? `Pengguna #${log.user_id ?? '—'}`}
+                      {getDmDisplayName(log.user_name, `Pengguna #${log.user_id ?? '—'}`)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-slate-600">{log.user_role ?? '—'}</td>
                     <td className="px-4 py-3 whitespace-nowrap">

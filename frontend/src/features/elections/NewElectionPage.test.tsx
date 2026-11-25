@@ -157,9 +157,9 @@ describe('Phase 4 — Buat Siklus Pemilihan Baru', () => {
     expect(await screen.findByTestId('election-confirm-modal')).toBeInTheDocument();
     const items = screen.getByTestId('confirm-electorate-list').querySelectorAll('li');
     expect(items).toHaveLength(3);
-    expect(screen.getByTestId('confirm-electorate-dm1')).toHaveTextContent('Ketua Panel (dm1)');
-    expect(screen.getByTestId('confirm-electorate-dm2')).toHaveTextContent('Anggota Panel 1 (dm2)');
-    expect(screen.getByTestId('confirm-electorate-dm3')).toHaveTextContent('Anggota Panel 2 (dm3)');
+    expect(screen.getByTestId('confirm-electorate-dm1')).toHaveTextContent('Perwakilan MPR (dm1)');
+    expect(screen.getByTestId('confirm-electorate-dm2')).toHaveTextContent('Perwakilan DPR (dm2)');
+    expect(screen.getByTestId('confirm-electorate-dm3')).toHaveTextContent('Utusan Daerah (dm3)');
 
     await user.click(screen.getByTestId('create-election-submit'));
 

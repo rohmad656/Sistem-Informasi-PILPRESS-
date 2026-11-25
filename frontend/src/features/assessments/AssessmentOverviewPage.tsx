@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
+import { getDmDisplayName } from '@/utils/dmIdentity';
 import { useMyAssessments, useAssessmentStatus, useFinalizeAssessments, useCandidates, useCriteria } from './useAssessmentData';
 import { CheckCircle, Clock, Eye, Pencil, CheckCircle2, AlertTriangle } from 'lucide-react';
 
@@ -64,7 +65,7 @@ export const AssessmentOverviewPage: React.FC = () => {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">Penilaian Kandidat</h1>
-            <p className="text-slate-300">{user?.name}</p>
+            <p className="text-slate-300">{user ? getDmDisplayName({ username: user.username, name: user.name }) : 'Pengguna'}</p>
             <p className="text-sm text-slate-400 mt-2">{user?.role === 'chair' ? 'Ketua Panel' : 'Anggota Panel'}</p>
           </div>
           <div className={`px-4 py-2 rounded-lg font-semibold text-sm ${statusBadgeColor}`}>
@@ -144,7 +145,7 @@ export const AssessmentOverviewPage: React.FC = () => {
             {status.panel.map((p) => (
               <div key={p.user_id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                 <div>
-                  <p className="font-semibold text-slate-800 text-sm">{p.name}</p>
+                  <p className="font-semibold text-slate-800 text-sm">{getDmDisplayName({ username: p.username, name: p.name })}</p>
                   <p className="text-xs text-slate-500">{p.role === 'chair' ? 'Ketua Panel' : 'Anggota Panel'}</p>
                 </div>
                 <div>

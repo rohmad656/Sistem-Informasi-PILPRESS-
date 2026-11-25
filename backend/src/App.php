@@ -1130,6 +1130,11 @@ final class App
         );
 
         $candidates = $this->listCandidates(null, $sessionId);
+        $this->bad(
+            count($candidates) < 2,
+            409,
+            'Hasil Borda belum dapat dihitung. Sesi aktif hanya memiliki satu kandidat; minimal dua kandidat diperlukan untuk agregasi peringkat Borda.'
+        );
         $criteria = $this->listCriteria(null, $sessionId);
         // Hanya Ketua dan Anggota Panel yang menilai; pemilih publik tidak memiliki
         // penilaian dan tidak boleh masuk ke agregasi Borda.

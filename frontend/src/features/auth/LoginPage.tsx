@@ -267,9 +267,9 @@ export const LoginPage: React.FC = () => {
           <div className="mt-6 p-4 bg-slate-50 rounded-lg">
             <p className="text-xs font-semibold text-slate-600 mb-2">Akun Demonstrasi:</p>
             <div className="text-xs text-slate-600 space-y-1 font-mono">
-              <p><span className="font-medium">Ketua Panel:</span> dm1 / password123</p>
-              <p><span className="font-medium">Anggota 1:</span> dm2 / password123</p>
-              <p><span className="font-medium">Anggota 2:</span> dm3 / password123</p>
+              <p><span className="font-medium">Ketua Panel — Perwakilan MPR:</span> dm1 / password123</p>
+              <p><span className="font-medium">Anggota Panel 1 — Perwakilan DPR:</span> dm2 / password123</p>
+              <p><span className="font-medium">Anggota Panel 2 — Utusan Daerah:</span> dm3 / password123</p>
             </div>
           </div>
         </div>

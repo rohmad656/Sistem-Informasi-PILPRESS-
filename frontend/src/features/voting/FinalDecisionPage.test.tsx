@@ -233,7 +233,7 @@ describe('FinalDecisionPage', () => {
     expect((await screen.findAllByText('Keputusan Telah Disahkan')).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Kandidat A').length).toBeGreaterThan(0);
     expect(screen.getByText('Detail Pengesahan')).toBeInTheDocument();
-    expect(screen.getAllByText('DM Satu').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Perwakilan MPR').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Konsensus panel tercapai.').length).toBeGreaterThan(0);
     expect(screen.queryByText('Keputusan belum disahkan')).not.toBeInTheDocument();
   });
@@ -411,9 +411,9 @@ describe('FinalDecisionPage', () => {
     });
 
     const report = screen.getByTestId('official-decision-report');
-    expect(report).toHaveTextContent('DM Satu');
-    expect(report).toHaveTextContent('DM Dua');
-    expect(report).toHaveTextContent('DM Tiga');
+    expect(report).toHaveTextContent('Perwakilan MPR');
+    expect(report).toHaveTextContent('Perwakilan DPR');
+    expect(report).toHaveTextContent('Utusan Daerah');
     expect(report).not.toHaveTextContent('Nama panelis — diisi resmi');
     expect(report).toHaveTextContent(/hasil TOPSIS di bawah dihitung ulang dengan metodologi terkini/);
     expect(report).toHaveTextContent(/bukan bukti bahwa keputusan historis disahkan berdasarkan TOPSIS/);
