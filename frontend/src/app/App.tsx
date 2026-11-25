@@ -28,8 +28,8 @@ const AssessmentOverviewPage = lazy(() =>
 const AssessmentInputPage = lazy(() =>
   import('@/features/assessments').then((m) => ({ default: m.AssessmentInputPage }))
 );
-const SawResultsPage = lazy(() =>
-  import('@/features/results').then((m) => ({ default: m.SawResultsPage }))
+const TopsisResultsPage = lazy(() =>
+  import('@/features/results').then((m) => ({ default: m.TopsisResultsPage }))
 );
 const BordaResultsPage = lazy(() =>
   import('@/features/results').then((m) => ({ default: m.BordaResultsPage }))
@@ -124,8 +124,9 @@ const AppRoutes: React.FC = () => {
         <Route path="/assessments" element={<ProtectedLayout allowedRoles={['chair', 'member']}><AssessmentOverviewPage /></ProtectedLayout>} />
         <Route path="/assessments/input" element={<ProtectedLayout allowedRoles={['chair', 'member']}><AssessmentInputPage /></ProtectedLayout>} />
 
-        {/* Protected: Results (panel only) */}
-        <Route path="/results/saw" element={<ProtectedLayout allowedRoles={['chair', 'member']}><SawResultsPage /></ProtectedLayout>} />
+        {/* Protected: Results (panel only) — halaman aktif memakai TOPSIS */}
+        <Route path="/results/saw" element={<Navigate to="/results/topsis" replace />} />
+        <Route path="/results/topsis" element={<ProtectedLayout allowedRoles={['chair', 'member']}><TopsisResultsPage /></ProtectedLayout>} />
         <Route path="/results/borda" element={<ProtectedLayout allowedRoles={['chair', 'member']}><BordaResultsPage /></ProtectedLayout>} />
 
         {/* Protected: Voting & Decisions (all roles) */}

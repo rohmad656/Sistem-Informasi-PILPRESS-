@@ -1,3 +1,6 @@
+> [!NOTE]
+> Historical phase snapshot. Wording/data reflects then-current methodology. Final methodology: TOPSIS (multicriteria), Borda (aggregation), SAW (legacy comparison).
+
 # PILPRESS — PHASE 6: AUDIT REPORT & IMPLEMENTATION PLANNING
 
 **Dokumen:** Laporan Audit Menyeluruh & Perencanaan Implementasi Phase 6\

@@ -1,5 +1,5 @@
 # BACKEND GDSS PEMILIHAN CALON PRESIDEN
-Sistem Pendukung Keputusan Kelompok (Group Decision Support System - GDSS) Berbasis Web untuk Pemilihan Calon Presiden menggunakan Metode Simple Additive Weighting (SAW), Agregasi Borda, dan Konsensus Voting Langsung.
+Sistem Pendukung Keputusan Kelompok (Group Decision Support System - GDSS) Berbasis Web untuk Pemilihan Calon Presiden menggunakan Metode TOPSIS untuk penilaian multikriteria, Agregasi Borda untuk ranking panel, dan Konsensus Voting Langsung.
 
 ---
 
@@ -11,8 +11,8 @@ Project ini merupakan implementasi backend REST API untuk simulasi akademik peng
 - **DM3**: Anggota Panel 2 (Role: `member`)
 
 ### Metode Pengambilan Keputusan
-1. **Simple Additive Weighting (SAW)**: Penilaian individual oleh setiap DM terhadap 4 kriteria benefit berbobot (C1: 25, C2: 30, C3: 25, C4: 20) dengan normalisasi $r_{ij} = x_{ij} / \max(x_j)$ dan nilai preferensi $V_i = \sum(w_j \times r_{ij})$.
-2. **Metode Borda**: Agregasi pemeringkatan independen dari ketiga DM. Peringkat 1 mendapat 3 poin, Peringkat 2 mendapat 2 poin, dan Peringkat 3 mendapat 1 poin (dengan kebijakan pembagian poin rata-rata jika terjadi nilai seri).
+1. **TOPSIS (metode utama)**: Penilaian individual oleh setiap DM terhadap 4 kriteria berbobot (C1: 25, C2: 30, C3: 25, C4: 20). Normalisasi vektor $r_{ij} = x_{ij}/\sqrt{\sum x_{ij}^2}$, matriks terbobot $y_{ij} = (w_j/100)\,r_{ij}$, solusi ideal $A^+$/$A^-$, jarak $D^+$/$D^-$, dan nilai preferensi $C_i = D_i^-/(D_i^+ + D_i^-)$ pada rentang 0–1. Fungsi `calculateSaw()` tetap ada sebagai legacy perbandingan.
+2. **Metode Borda**: Agregasi pemeringkatan independen dari ketiga DM yang berasal dari nilai preferensi TOPSIS. Peringkat 1 mendapat 3 poin, Peringkat 2 mendapat 2 poin, dan Peringkat 3 mendapat 1 poin (dengan kebijakan pembagian poin rata-rata jika terjadi nilai seri).
 3. **Voting Langsung (Konsensus Utama)**: Konsensus mufakat di mana setiap DM memberikan satu suara rahasia per putaran voting. Keputusan sah jika mencapai mayoritas minimal 2 dari 3 suara (66.67%). Apabila terjadi seri (1-1-1), sistem mewajibkan putaran voting ulang. Hasil mayoritas disahkan secara resmi oleh Ketua Panel.
 
 ---
@@ -31,10 +31,10 @@ backend/
 │   └── index.php            # Entry point REST API & CORS handler
 ├── src/
 │   ├── App.php              # Workflow controller, otorisasi & transaksi DB
-│   ├── DecisionService.php  # Engine matematika SAW, Borda, & Voting
+│   ├── DecisionService.php  # Engine matematika TOPSIS, Borda, & Voting
 │   └── bootstrap.php        # Inisialisasi environment & koneksi PDO
 ├── tests/
-│   ├── run.php              # Automated test 16 kasus unit/database
+│   ├── run.php              # Automated test 98 kasus (TOPSIS, Borda, voting, kontrak API)
 │   └── http_test.php        # Automated test live HTTP web server
 ├── tools/
 │   ├── analyze_sources.py   # Analisis dokumen acuan asli (Excel/PDF/PPTX)
@@ -61,8 +61,8 @@ php tools/provision.php dm3 <password_baru> member
 | Akun | Username | Jabatan (Role) | Hak Akses Utama |
 |---|---|---|---|
 | **DM1** | `dm1` | **Ketua Panel** (`chair`) | Buka voting, buka putaran ulang, sahkan keputusan mufakat |
-| **DM2** | `dm2` | **Anggota Panel 1** (`member`) | Isi penilaian, lihat SAW pribadi, voting, lihat konsensus |
-| **DM3** | `dm3` | **Anggota Panel 2** (`member`) | Isi penilaian, lihat SAW pribadi, voting, lihat konsensus |
+| **DM2** | `dm2` | **Anggota Panel 1** (`member`) | Isi penilaian, lihat TOPSIS pribadi, voting, lihat konsensus |
+| **DM3** | `dm3` | **Anggota Panel 2** (`member`) | Isi penilaian, lihat TOPSIS pribadi, voting, lihat konsensus |
 | **Pemilih** | registrasi mandiri | **Pemilih Terdaftar** (`voter`) | Voting langsung, lihat kandidat, lihat hasil voting |
 
 *Catatan Keamanan*: Jangan menuliskan password, `APP_KEY`, atau kredensial database ke dokumentasi publik. Gunakan `php tools/provision.php <username> <password_baru> <role>` untuk mengatur atau mereset password akun panel.
@@ -156,7 +156,7 @@ npm run preview
 
 - Registrasi publik selalu menghasilkan role `voter`; role `chair`/`member` tidak dapat dipilih dari endpoint publik.
 - Token Bearer HMAC-SHA256 berlaku 1 jam dan tidak dicetak ke log.
-- Endpoint penilaian, SAW pribadi, Borda, status panel, dan aksi ketua dibatasi di backend berdasarkan role.
+- Endpoint penilaian, TOPSIS pribadi, Borda, status panel, dan aksi ketua dibatasi di backend berdasarkan role. Endpoint SAW pribadi tetap tersedia sebagai legacy.
 - Password disimpan sebagai hash Bcrypt dan tidak pernah dikembalikan oleh API.
 - Semua query menggunakan prepared statement PDO.
 - `APP_KEY`, `.env`, dan kredensial database tidak boleh di-commit atau ditulis di dokumentasi.
@@ -179,7 +179,7 @@ php tests/run.php
 3. Akses tanpa token ditolak (401)
 4. Anggota dilarang akses aksi ketua (403)
 5. Penilaian tidak lengkap tidak bisa difinalisasi (422)
-6. Skor SAW presisi sesuai Excel (DM1: 91/85/79, DM2: 86/96/78, DM3: 95/76/85)
+6. Skor TOPSIS Session 1 sesuai referensi (DM1: 0.656679/0.449105/0.232170, DM2: 0.592144/0.774674/0.225326, DM3: 0.698325/0.000000/0.424859); skor SAW lama tetap diuji sebagai legacy
 7. Agregasi Borda presisi sesuai Excel (A: 8 poin / 44.44%, B: 6 poin / 33.33%, C: 4 poin / 22.22%)
 8. Voting tidak dapat dibuka sebelum seluruh DM selesai menilai
 9. DM dilarang memberikan suara ganda pada putaran yang sama (409)
@@ -218,7 +218,9 @@ npm run build
 
 ---
 
-## 7. Verifikasi Kesesuaian Hasil dengan Excel Sumber
+## 7. Verifikasi Kesesuaian Hasil
+
+> Angka SAW pada tabel pertama adalah **baseline historis** sebelum migrasi metodologi. Metode aktif saat ini adalah TOPSIS; verifikasi TOPSIS Session 1 menghasilkan DM1 `0.656679 / 0.449105 / 0.232170`, DM2 `0.592144 / 0.774674 / 0.225326`, DM3 `0.698325 / 0.000000 / 0.424859`, dan agregasi Borda tetap A=8, B=6, C=4.
 
 | Objek Perhitungan | Kandidat A | Kandidat B | Kandidat C | Status Verifikasi |
 |---|---|---|---|---|

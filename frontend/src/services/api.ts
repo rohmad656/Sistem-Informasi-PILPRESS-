@@ -7,6 +7,7 @@ import {
   MyAssessmentsResponse,
   AssessmentStatusResponse,
   SawResponse,
+  TopsisResponse,
   BordaResponse,
   VotingStatusResponse,
   VotingResultsResponse,
@@ -312,6 +313,12 @@ export class ApiClient {
   // --- Results APIs ---
   async getSawResults(): Promise<ApiResponse<SawResponse>> {
     return this.request<SawResponse>('GET', '/results/saw/me');
+  }
+
+  /** Hasil TOPSIS personal DM yang sedang login (skor 0–1, presisi penuh). */
+  async getTopsisResults(sessionId?: number): Promise<ApiResponse<TopsisResponse>> {
+    const qs = sessionId ? `?session_id=${sessionId}` : '';
+    return this.request<TopsisResponse>('GET', `/results/topsis/me${qs}`);
   }
 
   async getBordaResults(): Promise<ApiResponse<BordaResponse>> {

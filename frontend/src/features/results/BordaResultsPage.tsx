@@ -323,6 +323,10 @@ export const BordaResultsPage: React.FC = () => {
         <p className="mt-1 text-sm text-slate-500">
           Peringkat konsensus kelompok berdasarkan agregasi Borda Count dari seluruh pengambil keputusan.
         </p>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          TOPSIS digunakan untuk menentukan ranking alternatif berdasarkan penilaian multikriteria dari setiap Decision Maker.
+          Hasil ranking masing-masing Decision Maker kemudian diagregasikan menggunakan metode Borda.
+        </p>
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
           <span>
             Total Poin Terdistribusi: <strong className="text-navy-800">{totalPoints} poin</strong>
@@ -455,7 +459,7 @@ export const BordaResultsPage: React.FC = () => {
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="font-bold text-navy-800">Matriks Kontribusi Pengambil Keputusan</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Skor SAW, posisi peringkat, dan poin Borda yang disumbangkan tiap DM
+              Nilai preferensi TOPSIS, posisi peringkat, dan poin Borda yang disumbangkan tiap DM
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -505,7 +509,7 @@ export const BordaResultsPage: React.FC = () => {
                       return (
                         <React.Fragment key={dmKey}>
                           <td className="px-2 py-3 text-right font-mono text-slate-700">
-                            {dmCandidateData.score.toFixed(1)}
+                            {dmCandidateData.score.toFixed(6)}
                           </td>
                           <td className="px-2 py-3 text-center text-slate-600">#{dmCandidateData.rank_position}</td>
                           <td className="px-2 py-3 text-right font-bold text-navy-800">+{dmCandidateData.points}</td>
@@ -538,8 +542,8 @@ export const BordaResultsPage: React.FC = () => {
             <div className="rounded-lg border border-navy-100 bg-white p-4">
               <p className="mb-1 font-semibold text-navy-700">2. Penanganan Posisi Seri (Tie)</p>
               <p className="text-xs text-slate-600">
-                Kandidat dengan skor SAW yang sama membagi rata poin dari posisi yang diperebutkan (average point
-                sharing rule).
+                Kandidat dengan nilai preferensi TOPSIS yang sama membagi rata poin dari posisi yang diperebutkan
+                (average point sharing rule).
               </p>
             </div>
           </div>

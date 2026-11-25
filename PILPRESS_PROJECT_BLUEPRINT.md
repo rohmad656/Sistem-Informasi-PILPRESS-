@@ -1,9 +1,13 @@
 # PILPRESS — Product & Technical Blueprint
 
-**Status:** Draft awal untuk validasi terhadap backend yang tersedia  
+**Status:** Draft awal untuk validasi terhadap backend yang tersedia (superseded oleh implementasi final)  
 **Produk:** Sistem Pendukung Keputusan Kelompok (GDSS) Pemilihan Calon Presiden  
-**Metode utama:** Simple Additive Weighting (SAW)  
+**Metode utama (final):** TOPSIS untuk penilaian multikriteria, Borda untuk agregasi ranking  
+**Metode utama (draft lama, superseded):** Simple Additive Weighting (SAW)  
 **Database target:** MySQL/MariaDB melalui Laragon
+
+> [!NOTE]
+> Dokumen ini adalah baseline perencanaan historis. Bagian yang masih menyebut SAW sebagai metode utama mencerminkan rancangan awal dan sudah tidak berlaku. Metodologi final: TOPSIS (penilaian multikriteria) → ranking per DM → Borda (agregasi ranking). Endpoint SAW dipertahankan hanya sebagai legacy perbandingan.
 
 > Dokumen ini adalah baseline perencanaan, bukan klaim bahwa struktur database atau fitur di bawah sudah ada pada source code. Sebelum implementasi, audit backend dan database aktual harus dilakukan. Nama tabel, framework, rute, role, serta alur voting wajib disesuaikan dengan hasil audit.
 
@@ -340,7 +344,7 @@ erDiagram
 
 ---
 
-## 3. Formula and calculation flow — SAW
+## 3. Formula and calculation flow — SAW (superseded; lihat catatan status di atas)
 
 ### 3.1 Group aggregation
 

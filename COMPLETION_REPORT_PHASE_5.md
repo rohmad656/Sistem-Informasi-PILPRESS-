@@ -1,3 +1,6 @@
+> [!NOTE]
+> Historical phase snapshot. Wording/data reflects then-current methodology. Final methodology: TOPSIS (multicriteria), Borda (aggregation), SAW (legacy comparison).
+
 # Laporan Penyelesaian: Pilpress Phase 5 Erweiterte Pemilih & Penghilangan Emoji
 
 **Tanggal:** 4 November 2026  

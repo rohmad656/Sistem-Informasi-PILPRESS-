@@ -300,9 +300,67 @@ Setiap respons HTTP menggunakan format konsisten:
 
 ---
 
-## 5. Hasil Perhitungan (SAW & Borda)
+## 5. Hasil Perhitungan (TOPSIS & Borda)
 
-### 5.1 Hasil SAW Pribadi DM
+### 5.1 Hasil TOPSIS Pribadi DM (Metode Utama)
+- **Method**: `GET`
+- **Endpoint**: `/api/results/topsis/me` (atau `/api/results/topsis`)
+- **Autentikasi**: Wajib (Pengguna harus sudah memfinalisasi penilaiannya)
+- **Role**: Ketua Panel (`chair`) atau Anggota Panel (`member`)
+- **Response Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Perhitungan TOPSIS pribadi berhasil diambil.",
+    "data": {
+      "dm_user_id": 1,
+      "dm_name": "Ketua Panel",
+      "rankings": [
+        {
+          "candidate_id": 1,
+          "candidate_name": "Kandidat A",
+          "final_score": 0.6566794889285266,
+          "d_plus": 0.042405726193936205,
+          "d_minus": 0.08111071056538126,
+          "rank": 1,
+          "breakdown": {
+            "1": { "criterion_id": 1, "code": "C1", "raw_score": 5, "sum_squares": 7.0710678118654755, "normalized": 0.707107, "weight": 25, "norm_weight": 0.25, "weighted_normalized": 0.176777, "ideal_positive": 0.176777, "ideal_negative": 0.106066 },
+            "2": { "criterion_id": 2, "code": "C2", "raw_score": 5, "sum_squares": 7.54983443527075, "normalized": 0.662266, "weight": 30, "norm_weight": 0.3, "weighted_normalized": 0.19868, "ideal_positive": 0.19868, "ideal_negative": 0.158944 },
+            "3": { "criterion_id": 3, "code": "C3", "raw_score": 4, "sum_squares": 7.54983443527075, "normalized": 0.529813, "weight": 25, "norm_weight": 0.25, "weighted_normalized": 0.132453, "ideal_positive": 0.165567, "ideal_negative": 0.132453 },
+            "4": { "criterion_id": 4, "code": "C4", "raw_score": 4, "sum_squares": 7.54983443527075, "normalized": 0.529813, "weight": 20, "norm_weight": 0.2, "weighted_normalized": 0.105963, "ideal_positive": 0.132453, "ideal_negative": 0.105963 }
+          }
+        },
+        {
+          "candidate_id": 2,
+          "candidate_name": "Kandidat B",
+          "final_score": 0.4491049380756443,
+          "d_plus": 0.05941970846769583,
+          "d_minus": 0.04844059483604816,
+          "rank": 2,
+          "breakdown": { ... }
+        },
+        {
+          "candidate_id": 3,
+          "candidate_name": "Kandidat C",
+          "final_score": 0.23216997623453964,
+          "d_plus": 0.0876095805063078,
+          "d_minus": 0.026490647141300866,
+          "rank": 3,
+          "breakdown": { ... }
+        }
+      ]
+    }
+  }
+  ```
+
+**Catatan metodologi**:
+- `final_score` (nilai preferensi TOPSIS) berada pada rentang **0–1**. Semakin mendekati 1, semakin baik alternatifnya.
+- Backend menjaga **presisi penuh** (float PHP 64-bit). Frontend menampilkan 6 angka desimal (`toFixed(6)`).
+- `final_score` **bukan** persentase voting; skor TOPSIS dan suara voting adalah dua informasi berbeda.
+- Skor yang dikirim ke Borda adalah `final_score` presisi penuh, **tidak dibulatkan** sebelum agregasi.
+
+---
+### 5.2 Hasil SAW Pribadi DM (Legacy — Perbandingan Sementara)
 - **Method**: `GET`
 - **Endpoint**: `/api/results/saw/me` (atau `/api/results/saw`)
 - **Autentikasi**: Wajib (Pengguna harus sudah memfinalisasi penilaiannya)
@@ -384,9 +442,9 @@ Setiap respons HTTP menggunakan format konsisten:
         }
       ],
       "dm_breakdown": {
-        "1": { "1": { "score": 91, "rank_position": 1, "points": 3 }, "2": { "score": 85, "rank_position": 2, "points": 2 }, "3": { "score": 79, "rank_position": 3, "points": 1 } },
-        "2": { "2": { "score": 96, "rank_position": 1, "points": 3 }, "1": { "score": 86, "rank_position": 2, "points": 2 }, "3": { "score": 78, "rank_position": 3, "points": 1 } },
-        "3": { "1": { "score": 95, "rank_position": 1, "points": 3 }, "3": { "score": 85, "rank_position": 2, "points": 2 }, "2": { "score": 76, "rank_position": 3, "points": 1 } }
+        "1": { "1": { "score": 0.6566794889285266, "rank_position": 1, "is_tied": false, "points": 3 }, "2": { "score": 0.4491049380756443, "rank_position": 2, "is_tied": false, "points": 2 }, "3": { "score": 0.23216997623453964, "rank_position": 3, "is_tied": false, "points": 1 } },
+        "2": { "2": { "score": 0.7746739877407759, "rank_position": 1, "is_tied": false, "points": 3 }, "1": { "score": 0.5921444800427011, "rank_position": 2, "is_tied": false, "points": 2 }, "3": { "score": 0.2253262315407482, "rank_position": 3, "is_tied": false, "points": 1 } },
+        "3": { "1": { "score": 0.6983249999999999, "rank_position": 1, "is_tied": false, "points": 3 }, "3": { "score": 0.424859377134598, "rank_position": 2, "is_tied": false, "points": 2 }, "2": { "score": 0.0, "rank_position": 3, "is_tied": false, "points": 1 } }
       }
     }
   }

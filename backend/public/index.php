@@ -293,8 +293,18 @@ try {
     }
 
     // Route: Perhitungan (Results)
+    // Endpoint SAW legacy dipertahankan (pembanding sementara).
     if ($method === 'GET' && ($route === '/results/saw/me' || $route === '/results/saw')) {
         respond(200, true, 'Perhitungan SAW pribadi berhasil diambil.', $app->calculateSawMe($currentUser, querySessionId()));
+    }
+
+    // Endpoint TOPSIS personal: identitas DM diambil dari token, bukan parameter.
+    if ($method === 'GET' && ($route === '/results/topsis/me' || $route === '/results/topsis')) {
+        $u = $app->actor($currentUser);
+        if (!in_array($u['role'], ['chair', 'member'], true)) {
+            throw new ApiError(403, 'Akses ditolak. Hasil TOPSIS hanya dapat diakses oleh Ketua Panel dan Anggota Panel.');
+        }
+        respond(200, true, 'Perhitungan TOPSIS pribadi berhasil diambil.', $app->calculateTopsisMe($currentUser, querySessionId()));
     }
 
     if ($method === 'GET' && $route === '/results/borda') {

@@ -1,3 +1,6 @@
+> [!NOTE]
+> Historical phase snapshot. Wording/data reflects then-current methodology. Final methodology: TOPSIS (multicriteria), Borda (aggregation), SAW (legacy comparison).
+
 # PILPRESS — PHASE 4 COMPLETION REPORT
 ## SAW & Borda Results Analytics
 

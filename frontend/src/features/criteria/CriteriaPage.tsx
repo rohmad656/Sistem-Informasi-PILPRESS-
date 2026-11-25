@@ -233,7 +233,7 @@ export const CriteriaPage: React.FC = () => {
               ? isFinalized
                 ? 'Kriteria sudah dikunci dan siap digunakan dalam proses penilaian.'
                 : 'Ketua Panel: tentukan kriteria, bobot (total wajib 100%), lalu finalisasi sebelum penilaian.'
-              : 'Daftar kriteria resmi yang digunakan dalam penilaian SAW dan Borda.'}
+              : 'Daftar kriteria resmi yang digunakan dalam penilaian TOPSIS dan Borda.'}
           </p>
         </div>
 

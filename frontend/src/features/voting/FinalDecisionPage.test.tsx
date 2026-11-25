@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { FinalDecisionPage } from './FinalDecisionPage';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ApiError } from '@/services/api';
-import { RatifiedDecision, VotingStatusResponse, Candidate, Criterion, SawResponse, BordaResponse } from '@/types';
+import { RatifiedDecision, VotingStatusResponse, Candidate, Criterion, TopsisResponse, BordaResponse } from '@/types';
 
 const statusMock = vi.fn();
 const finalDecisionMock = vi.fn();
@@ -14,7 +14,7 @@ const approveMock = vi.fn();
 const electionMock = vi.fn();
 const candidatesMock = vi.fn();
 const criteriaMock = vi.fn();
-const sawMock = vi.fn();
+const topsisMock = vi.fn();
 const bordaMock = vi.fn();
 const userState: { role: 'chair' | 'member' | 'voter' } = { role: 'chair' };
 
@@ -29,7 +29,7 @@ vi.mock('@/services/api', async (importOriginal) => {
       getElection: () => electionMock(),
       getCandidates: () => candidatesMock(),
       getCriteria: () => criteriaMock(),
-      getSawResults: () => sawMock(),
+      getTopsisResults: () => topsisMock(),
       getBordaResults: () => bordaMock(),
     },
   };
@@ -98,14 +98,14 @@ describe('FinalDecisionPage', () => {
     electionMock.mockReset();
     candidatesMock.mockReset();
     criteriaMock.mockReset();
-    sawMock.mockReset();
+    topsisMock.mockReset();
     bordaMock.mockReset();
     userState.role = 'chair';
     finalDecisionMock.mockRejectedValue(new ApiError(404, 'Keputusan final belum tersedia.'));
     electionMock.mockResolvedValue({ success: true, message: 'ok', data: null });
     candidatesMock.mockResolvedValue({ success: true, message: 'ok', data: [] });
     criteriaMock.mockResolvedValue({ success: true, message: 'ok', data: [] });
-    sawMock.mockResolvedValue({ success: true, message: 'ok', data: null });
+    topsisMock.mockResolvedValue({ success: true, message: 'ok', data: null });
     bordaMock.mockResolvedValue({ success: true, message: 'ok', data: null });
     window.print = vi.fn();
   });
@@ -341,11 +341,11 @@ describe('FinalDecisionPage', () => {
     const criteria: Criterion[] = [
       { id: 1, session_id: 1, code: 'C1', name: 'Kriteria 1', description: '', weight: 100, type: 'benefit', is_finalized: true },
     ];
-    const saw: SawResponse = {
+    const topsis: TopsisResponse = {
       dm_user_id: 1,
       dm_name: 'DM Satu',
       rankings: [
-        { candidate_id: 1, candidate_name: 'Kandidat A', final_score: 0.875, rank: 1, breakdown: {} },
+        { candidate_id: 1, candidate_name: 'Kandidat A', final_score: 0.875, d_plus: 0.1, d_minus: 0.7, rank: 1, breakdown: {} },
       ],
     };
     const borda: BordaResponse = {
@@ -385,7 +385,7 @@ describe('FinalDecisionPage', () => {
     finalDecisionMock.mockResolvedValue({ success: true, message: 'ok', data: ratifiedDecision });
     candidatesMock.mockResolvedValue({ success: true, message: 'ok', data: candidates });
     criteriaMock.mockResolvedValue({ success: true, message: 'ok', data: criteria });
-    sawMock.mockResolvedValue({ success: true, message: 'ok', data: saw });
+    topsisMock.mockResolvedValue({ success: true, message: 'ok', data: topsis });
     bordaMock.mockResolvedValue({ success: true, message: 'ok', data: borda });
 
     const user = userEvent.setup();
@@ -400,7 +400,7 @@ describe('FinalDecisionPage', () => {
       '5. Susunan Panel Decision Maker',
       '6. Daftar Kriteria Penilaian',
       '7. Daftar Kandidat',
-      '8. Hasil Penilaian SAW',
+      '8. Hasil Penilaian TOPSIS',
       '9. Hasil Penilaian Borda',
       '10. Rekapitulasi Perolehan Suara',
       '11. Hasil Akhir Pemilihan',
@@ -415,6 +415,8 @@ describe('FinalDecisionPage', () => {
     expect(report).toHaveTextContent('DM Dua');
     expect(report).toHaveTextContent('DM Tiga');
     expect(report).not.toHaveTextContent('Nama panelis — diisi resmi');
+    expect(report).toHaveTextContent(/hasil TOPSIS di bawah dihitung ulang dengan metodologi terkini/);
+    expect(report).toHaveTextContent(/bukan bukti bahwa keputusan historis disahkan berdasarkan TOPSIS/);
 
     await user.click(screen.getByTestId('print-official-report'));
     expect(window.print).toHaveBeenCalledTimes(1);

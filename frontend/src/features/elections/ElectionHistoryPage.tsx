@@ -77,7 +77,7 @@ export const ElectionHistoryPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-navy-800">Riwayat Siklus Pemilihan</h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Arsip seluruh pemilihan. Hasil SAW, Borda, voting, revote, dan keputusan final tetap dapat diakses.
+            Arsip seluruh pemilihan. Hasil TOPSIS, Borda, voting, revote, dan keputusan final tetap dapat diakses.
           </p>
         </div>
         {canCreate && user?.role === 'chair' && (

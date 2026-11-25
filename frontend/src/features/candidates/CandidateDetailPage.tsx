@@ -148,7 +148,7 @@ export const CandidateDetailPage: React.FC = () => {
 
           <div className="px-6 py-4 border-t border-slate-100 bg-navy-50">
             <p className="text-xs text-slate-600 text-center">
-              Informasi profil lengkap adalah data referensi untuk penilaian SAW dan Borda.
+              Informasi profil lengkap adalah data referensi untuk penilaian TOPSIS dan Borda.
             </p>
           </div>
         </article>

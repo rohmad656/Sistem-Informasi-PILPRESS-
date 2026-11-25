@@ -30,6 +30,198 @@ final class DecisionService
     }
 
     /**
+     * Perhitungan Technique for Order of Preference by Similarity to Ideal Solution (TOPSIS)
+     *
+     * Rumus TOPSIS:
+     * 1. Normalisasi vektor:     r_ij = x_ij / sqrt(Σ x_ij²)
+     * 2. Normalisasi bobot:      w_j  = weight_j / 100
+     * 3. Matriks terbobot:       y_ij = w_j × r_ij
+     * 4. Solusi ideal:
+     *    - Benefit: A+ = max(y_j), A− = min(y_j)
+     *    - Cost:    A+ = min(y_j), A− = max(y_j)
+     * 5. Jarak ke solusi ideal:
+     *    D+ = sqrt(Σ(y_ij − A+_j)²)
+     *    D− = sqrt(Σ(y_ij − A−_j)²)
+     * 6. Nilai preferensi:       C_i = D− / (D+ + D−)
+     *
+     * Hasil C_i berada dalam rentang [0, 1]. Semakin mendekati 1 semakin baik.
+     *
+     * @param array $criteria Daftar kriteria [['id' => 1, 'code' => 'C1', 'weight' => 25, 'type' => 'benefit'], ...]
+     * @param array $matrix   Matriks alternatif [['candidate_id' => 1, 'scores' => [1 => 5, 2 => 5, 3 => 4, 4 => 4]], ...]
+     * @return array Hasil TOPSIS terurut dengan ranking dan rincian per kriteria
+     */
+    public function calculateTopsis(array $criteria, array $matrix): array
+    {
+        if (empty($criteria) || empty($matrix)) {
+            throw new InvalidArgumentException('Kriteria dan matriks penilaian tidak boleh kosong.');
+        }
+
+        // Validasi ID kandidat: harus unik dan positif (menjaga pasangan kandidat-kriteria unik)
+        $seenCandidates = [];
+        foreach ($matrix as $row) {
+            $candidateId = $row['candidate_id'] ?? null;
+            if (!is_int($candidateId) || $candidateId <= 0) {
+                throw new InvalidArgumentException('ID kandidat harus berupa bilangan bulat positif.');
+            }
+            if (isset($seenCandidates[$candidateId])) {
+                throw new InvalidArgumentException('Duplikat kandidat dalam matriks penilaian tidak diperbolehkan.');
+            }
+            $seenCandidates[$candidateId] = true;
+        }
+
+        $totalWeight = array_sum(array_column($criteria, 'weight'));
+        if ($totalWeight !== 100) {
+            throw new InvalidArgumentException('Total bobot kriteria harus berjumlah tepat 100.');
+        }
+
+        // Validasi ID, bobot per kriteria dan tipe kriteria
+        foreach ($criteria as $criterion) {
+            $cId = $criterion['id'] ?? null;
+            if (!is_int($cId) || $cId <= 0) {
+                throw new InvalidArgumentException('ID kriteria harus berupa bilangan bulat positif.');
+            }
+            $weight = $criterion['weight'] ?? null;
+            if (!is_int($weight) && !(is_string($weight) && ctype_digit($weight))) {
+                throw new InvalidArgumentException('Bobot harus bilangan bulat antara 1 sampai 100.');
+            }
+            if ((int)$weight < 1 || (int)$weight > 100) {
+                throw new InvalidArgumentException('Bobot harus bilangan bulat antara 1 sampai 100.');
+            }
+            $type = strtolower($criterion['type'] ?? 'benefit');
+            if (!in_array($type, ['benefit', 'cost'], true)) {
+                throw new InvalidArgumentException('Tipe kriteria harus bernilai benefit atau cost.');
+            }
+        }
+
+        // 1. Hitung sum of squares per kriteria (denominator normalisasi vektor)
+        $sumSquares = [];
+        foreach ($criteria as $criterion) {
+            $cId = $criterion['id'];
+            $sumSq = 0.0;
+            foreach ($matrix as $row) {
+                $val = $this->validateScore($row['scores'][$cId] ?? null);
+                $sumSq += $val * $val;
+            }
+            if ($sumSq === 0.0) {
+                throw new InvalidArgumentException("Jumlah kuadrat skor untuk kriteria {$cId} bernilai nol; pembagian tidak valid.");
+            }
+            $sumSquares[$cId] = sqrt($sumSq);
+        }
+
+        // 2. Normalisasi bobot
+        $normWeights = [];
+        foreach ($criteria as $criterion) {
+            $normWeights[$criterion['id']] = $criterion['weight'] / 100.0;
+        }
+
+        // 3. Hitung matriks ternormalisasi terbobot (y_ij) untuk semua kandidat
+        $weightedMatrix = [];
+        foreach ($matrix as $row) {
+            $candidateId = (int)$row['candidate_id'];
+            $weightedMatrix[$candidateId] = [];
+            foreach ($criteria as $criterion) {
+                $cId = $criterion['id'];
+                $rawScore = $this->validateScore($row['scores'][$cId] ?? null);
+                $r = $rawScore / $sumSquares[$cId];
+                $y = $r * $normWeights[$cId];
+                $weightedMatrix[$candidateId][$cId] = $y;
+            }
+        }
+
+        // 4. Tentukan solusi ideal positif (A+) dan negatif (A−) per kriteria
+        $idealPos = [];
+        $idealNeg = [];
+        foreach ($criteria as $criterion) {
+            $cId = $criterion['id'];
+            $type = strtolower($criterion['type'] ?? 'benefit');
+            $values = array_column($weightedMatrix, $cId);
+            if ($type === 'benefit') {
+                $idealPos[$cId] = max($values);
+                $idealNeg[$cId] = min($values);
+            } else { // cost
+                $idealPos[$cId] = min($values);
+                $idealNeg[$cId] = max($values);
+            }
+        }
+
+        // 5. Hitung jarak ke solusi ideal dan nilai preferensi
+        $results = [];
+        foreach ($matrix as $row) {
+            $candidateId = (int)$row['candidate_id'];
+            $breakdown = [];
+            $dPlusSq = 0.0;
+            $dMinusSq = 0.0;
+
+            foreach ($criteria as $criterion) {
+                $cId = $criterion['id'];
+                $cCode = $criterion['code'] ?? ('C' . $cId);
+                $weight = (int)$criterion['weight'];
+                $rawScore = $this->validateScore($row['scores'][$cId] ?? null);
+
+                $r = $rawScore / $sumSquares[$cId];
+                $w = $normWeights[$cId];
+                $y = $r * $w;
+
+                $dPlusSq   += ($y - $idealPos[$cId]) ** 2;
+                $dMinusSq  += ($y - $idealNeg[$cId]) ** 2;
+
+                $breakdown[$cId] = [
+                    'criterion_id' => $cId,
+                    'code' => $cCode,
+                    'raw_score' => $rawScore,
+                    'sum_squares' => $sumSquares[$cId],
+                    'normalized' => round($r, 6),
+                    'weight' => $weight,
+                    'norm_weight' => round($w, 6),
+                    'weighted_normalized' => round($y, 6),
+                    'ideal_positive' => round($idealPos[$cId], 6),
+                    'ideal_negative' => round($idealNeg[$cId], 6),
+                ];
+            }
+
+            $dPlus  = sqrt($dPlusSq);
+            $dMinus = sqrt($dMinusSq);
+
+            // Edge case: semua alternatif identik -> D+ + D− = 0
+            // Beri preferensi 0.5 untuk semua (netral) agar tidak NaN/INF
+            if ($dPlus + $dMinus === 0.0) {
+                $preference = 0.5;
+            } else {
+                $preference = $dMinus / ($dPlus + $dMinus);
+            }
+
+            $results[] = [
+                'candidate_id' => $candidateId,
+                'final_score' => $preference,
+                'd_plus' => $dPlus,
+                'd_minus' => $dMinus,
+                'breakdown' => $breakdown,
+            ];
+        }
+
+        // 6. Urutkan berdasarkan final_score menurun
+        usort($results, function ($a, $b) {
+            if (abs($b['final_score'] - $a['final_score']) > 0.000000001) {
+                return $b['final_score'] <=> $a['final_score'];
+            }
+            return $a['candidate_id'] <=> $b['candidate_id'];
+        });
+
+        // 7. Hitung peringkat (dengan penanganan tie konsisten)
+        $currentRank = 1;
+        $count = count($results);
+        for ($i = 0; $i < $count; $i++) {
+            if ($i > 0 && abs($results[$i]['final_score'] - $results[$i - 1]['final_score']) < 0.000001) {
+                $results[$i]['rank'] = $results[$i - 1]['rank'];
+            } else {
+                $results[$i]['rank'] = $i + 1;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
      * Perhitungan Simple Additive Weighting (SAW)
      * 
      * @param array $criteria Daftar kriteria [['id' => 1, 'code' => 'C1', 'weight' => 25, 'type' => 'benefit'], ...]

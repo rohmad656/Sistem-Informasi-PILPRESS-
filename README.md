@@ -1,6 +1,6 @@
 # Sistem Informasi Pilpress — GDSS Pemilihan Calon Presiden
 
-Simulasi akademik pengambilan keputusan kelompok (GDSS) menggunakan **React + TypeScript (Vite)**, **PHP 8 Native**, **MySQL/MariaDB**: **SAW + Borda + Voting Langsung + Pengesahan Ketua + Registrasi Pemilih**.
+Simulasi akademik pengambilan keputusan kelompok (GDSS) menggunakan **React + TypeScript (Vite)**, **PHP 8 Native**, **MySQL/MariaDB**: **TOPSIS + Borda + Voting Langsung + Pengesahan Ketua + Registrasi Pemilih**.
 Kandidat dan akun seed adalah fiktif, bukan data pemilu atau pengguna nyata.
 
 ---
@@ -11,7 +11,7 @@ Kandidat dan akun seed adalah fiktif, bukan data pemilu atau pengguna nyata.
 .
 ├── backend/
 │   ├── public/              # Document root API (index.php, .htaccess)
-│   ├── src/                 # Otorisasi, transaksi, SAW/Borda, workflow voting
+│   ├── src/                 # Otorisasi, transaksi, TOPSIS/Borda, workflow voting
 │   ├── database/            # Schema & seed (salinan identik dari root database/)
 │   ├── tests/               # Regression SQLite & HTTP terisolasi
 │   ├── tools/               # Provision akun
@@ -88,7 +88,7 @@ Probe API: `http://127.0.0.1:5173/api/candidates`.
 
 **Workflow:**
 1. **DM (chair/member)** login → isi penilaian 12 item (3 kandidat × 4 kriteria, skala 1–5) → **Finalisasi** masing-masing.
-2. Lihat hasil **SAW individual** & **Borda agregasi** (dihitung backend, frontend hanya tampil).
+2. Lihat hasil **TOPSIS individual** & **Borda agregasi** (dihitung backend, frontend hanya tampil).
 3. **Ketua (chair)** buka sesi **Voting** setelah 3 DM final.
 4. Semua **DM + Voter** terdaftar memilih **1 suara per putaran**.
 5. Mayoritas **> 50%** → pemenang. **Seri** → Ketua buka **Revote**.
@@ -118,7 +118,7 @@ Probe API: `http://127.0.0.1:5173/api/candidates`.
 ### 3. Dashboard Active Election
 
 - Banner **Siklus Pemilihan Aktif** menampilkan nama siklus, deskripsi, **ID Sesi**, **Status**, dan **Putaran** saat ini.
-- Status dan tahapan (penilaian → SAW/Borda → voting → keputusan) terbaca dari resolver sesi aktif backend, konsisten untuk semua peran.
+- Status dan tahapan (penilaian → TOPSIS/Borda → voting → keputusan) terbaca dari resolver sesi aktif backend, konsisten untuk semua peran.
 - Jika belum ada siklus aktif, ditampilkan empty state.
 
 ### 4. Assessment (Penilaian)
@@ -129,22 +129,50 @@ Probe API: `http://127.0.0.1:5173/api/candidates`.
 
 ---
 
+## Metodologi Final
+
+### TOPSIS (metode utama penilaian multikriteria)
+
+`DecisionService::calculateTopsis()` menghitung, per Decision Maker:
+
+1. **Matriks keputusan** — skor mentah 1–5 untuk setiap pasangan kandidat × kriteria.
+2. **Normalisasi vektor** — `r_ij = x_ij / √(Σ x_ij²)`.
+3. **Normalisasi terbobot** — `y_ij = (w_j / 100) × r_ij`.
+4. **Solusi ideal positif (A+)** dan **solusi ideal negatif (A−)** per kriteria, mengikuti tipe `benefit`/`cost`.
+5. **Jarak alternatif** — `D+ = √(Σ(y_ij − A+)²)` dan `D− = √(Σ(y_ij − A−)²)`.
+6. **Nilai preferensi** — `C_i = D− / (D+ + D−)`, rentang **0–1**; semakin tinggi semakin baik.
+7. **Ranking alternatif** per Decision Maker dihasilkan dari `C_i`.
+
+Backend mempertahankan presisi penuh `final_score`; frontend menampilkan 6 angka desimal. Skor TOPSIS bukan persentase voting.
+
+### Borda (agregasi ranking)
+
+`App::calculateBorda()` mengambil `final_score` TOPSIS presisi penuh untuk setiap DM, mengubahnya menjadi peringkat per DM, lalu `DecisionService::calculateBorda()` memberikan poin berdasarkan posisi dan mengagregasikannya. Aturan seri: **average point sharing** — kandidat dengan peringkat seri membagi rata poin posisi yang diperebutkan. Borda **menjumlahkan poin ranking**, bukan menjumlahkan nilai preferensi TOPSIS.
+
+### Arsitektur
+
+`React + Vite + TypeScript` → `GET /api/...` → `public/index.php` (router + auth) → `App.php` (session/role/DB) → `DecisionService.php` (TOPSIS & Borda) → `MySQL/MariaDB`.
+
+SAW tetap tersedia sebagai endpoint legacy (`/api/results/saw/me`) dan fungsi `calculateSaw()` untuk perbandingan; bukan metode aktif.
+
+---
+
 ## Pengujian
 
 ```bash
 # Frontend
 cd frontend
 npm ci
-npm test              # 97 test passing
+npm test              # 105 test passing (18 file, termasuk 8 test TOPSIS)
 npx tsc --noEmit      # TypeScript check
 npm run build         # production build
 
 # Backend regression (SQLite in-memory, tidak sentuh DB aplikasi)
 cd ..\backend
-C:/xampp/php/php.exe tests/run.php   # 66 test passing
+php tests/run.php     # 98 test passing (TOPSIS T1-T20, integrasi P3, kontrak API P4)
 ```
 
-Hasil final: backend **66/66 PASS**, frontend **97/97 PASS**, TypeScript **PASS**, production build **PASS**, PHP syntax **PASS**.
+Hasil terverifikasi: backend **98/98 PASS**, frontend **105/105 PASS**, TypeScript **PASS**, production build **PASS**, PHP syntax **PASS**, `comprehensive_integration_test.php` **9/9 PASS**. `http_test.php`: **5 PASS / 11 FAIL** akibat fixture SQLite legacy yang tidak mengisi `assessment_status` lengkap; bukan regresi aplikasi. Endpoint TOPSIS, Borda, dan SAW legacy terverifikasi lewat probe HTTP (200/200/200; voter 403 pada TOPSIS).
 
 ---
 
@@ -153,7 +181,7 @@ Hasil final: backend **66/66 PASS**, frontend **97/97 PASS**, TypeScript **PASS*
 | Phase | Ringkasan | Status |
 |---|---|---|
 | 1 | Fondasi auth, role, kandidat, kriteria | Selesai |
-| 2 | Penilaian SAW individual & Borda agregasi | Selesai |
+| 2 | Penilaian SAW individual & Borda agregasi (SAW kini legacy) | Selesai |
 | 3 | Voting langsung, revote, pengesahan ketua | Selesai |
 | 4 | Siklus pemilihan & histori keputusan | Selesai |
 | 5 | Data master per sesi (kriteria & kandidat final) | Selesai |

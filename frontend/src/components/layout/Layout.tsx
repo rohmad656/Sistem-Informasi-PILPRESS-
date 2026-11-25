@@ -71,7 +71,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         { label: 'Kandidat', path: '/candidates', icon: Users },
         { label: 'Kriteria', path: '/criteria', icon: ClipboardList },
         { label: 'Penilaian', path: '/assessments', icon: ClipboardCheck },
-        { label: 'Hasil SAW', path: '/results/saw', icon: ChartNoAxesColumnIncreasing },
+        { label: 'Hasil TOPSIS', path: '/results/topsis', icon: ChartNoAxesColumnIncreasing },
         { label: 'Hasil Borda', path: '/results/borda', icon: Trophy },
         { label: 'Voting', path: '/voting', icon: Vote },
         { label: 'Keputusan', path: '/decisions/final', icon: BadgeCheck },

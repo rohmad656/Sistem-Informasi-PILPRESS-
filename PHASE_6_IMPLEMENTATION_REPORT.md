@@ -1,3 +1,6 @@
+> [!NOTE]
+> Historical phase snapshot. Wording/data reflects then-current methodology. Final methodology: TOPSIS (multicriteria), Borda (aggregation), SAW (legacy comparison).
+
 # Phase 6 — Implementation Report
 
 Tanggal: 2026-11-20\

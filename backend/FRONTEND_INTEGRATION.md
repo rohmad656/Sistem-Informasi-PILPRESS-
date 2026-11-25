@@ -10,7 +10,7 @@ Panduan ini disusun untuk pengembang Frontend agar dapat membangun antarmuka web
 2. **Stateless Authentication**: Login mengembalikan Bearer token HMAC-SHA256 yang disimpan di sisi browser (`sessionStorage` atau `localStorage`).
 3. **Role-Based UI Rendering**:
    - `chair` (Ketua Panel): Memiliki tombol aksi kontrol: "Buka Sesi Voting", "Buka Putaran Ulang (jika seri)", dan "Sahkan Keputusan Konsensus".
-   - `member` (Anggota Panel 1 & 2): Antarmuka penilaian, melihat SAW/Borda, memberikan 1 suara voting, dan melihat hasil final. Tombol khusus ketua disembunyikan di UI (backend juga memiliki validasi otorisasi 403 Forbidden).
+   - `member` (Anggota Panel 1 & 2): Antarmuka penilaian, melihat TOPSIS/Borda, memberikan 1 suara voting, dan melihat hasil final. Tombol khusus ketua disembunyikan di UI (backend juga memiliki validasi otorisasi 403 Forbidden).
 
 ---
 
@@ -165,6 +165,11 @@ class GdssApi {
   }
 
   // --- Results Endpoints ---
+  async getTopsisResults(sessionId) {
+    const qs = sessionId ? `?session_id=${sessionId}` : '';
+    return this.request('GET', `/results/topsis/me${qs}`);
+  }
+
   async getSawResults() {
     return this.request('GET', '/results/saw/me');
   }
@@ -222,10 +227,10 @@ Frontend dapat dibagi menjadi tahapan alur berikut:
 [1. Login] 
     │
     ▼
-[2. Form Penilaian SAW (Grid 3 x 4)] ── Simpan Draft (PUT) ── Finalisasi (POST)
+[2. Form Penilaian Multikriteria (Grid 3 x 4)] ── Simpan Draft (PUT) ── Finalisasi (POST)
     │
     ▼
-[3. Tampilan Hasil SAW Pribadi]
+[3. Tampilan Hasil TOPSIS Pribadi]
     │
     ▼
 [4. Status Panel & Hasil Agregasi Borda] (Aktif setelah 3 DM finalisasi)

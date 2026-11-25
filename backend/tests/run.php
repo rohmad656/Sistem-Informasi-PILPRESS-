@@ -1711,6 +1711,564 @@ it('P6-3: Audit log tidak membocorkan kredensial dan tidak menulis log baru', fu
     assertTrue(strpos($serialized, 'token') === false, 'Response mengandung token');
 });
 
+// ===== PHASE 2: TOPSIS ENGINE — UNIT TESTS (non-persisten, fixture di kode) =====
+
+/** Helper: kriteria Session 1 (4 benefit, bobot 25/30/25/20) */
+function topsisCriteriaS1(): array
+{
+    return [
+        ['id' => 1, 'code' => 'C1', 'weight' => 25, 'type' => 'benefit'],
+        ['id' => 2, 'code' => 'C2', 'weight' => 30, 'type' => 'benefit'],
+        ['id' => 3, 'code' => 'C3', 'weight' => 25, 'type' => 'benefit'],
+        ['id' => 4, 'code' => 'C4', 'weight' => 20, 'type' => 'benefit'],
+    ];
+}
+
+/** Helper: matriks DM menghasilkan preferensi [A, B, C] sesuai fixture yang diminta */
+function topsisMatrix(int $dm): array
+{
+    $rows = [
+        1 => [[5,5,4,4], [4,4,5,4], [3,4,4,5]],
+        2 => [[4,5,4,4], [5,5,5,4], [4,3,4,5]],
+        3 => [[5,5,4,5], [4,4,4,3], [4,4,5,4]],
+    ];
+    $matrix = [];
+    foreach ($rows[$dm] as $index => $scores) {
+        $entry = ['candidate_id' => $index + 1, 'scores' => []];
+        foreach ($scores as $cId => $score) {
+            $entry['scores'][$cId + 1] = $score;
+        }
+        $matrix[] = $entry;
+    }
+    return $matrix;
+}
+
+// T1 — Normalisasi vektor: r_ij = x_ij / sqrt(Σx²)
+it('T1: Normalisasi vektor TOPSIS sesuai rumus r_ij = x_ij / sqrt(sum x_ij^2)', function () {
+    $calc = new DecisionService();
+    $criteria = [['id' => 1, 'code' => 'C1', 'weight' => 100, 'type' => 'benefit']];
+    $matrix = [
+        ['candidate_id' => 1, 'scores' => [1 => 3]],
+        ['candidate_id' => 2, 'scores' => [1 => 4]],
+        ['candidate_id' => 3, 'scores' => [1 => 5]],
+    ];
+    $result = $calc->calculateTopsis($criteria, $matrix);
+    $denominator = sqrt(3*3 + 4*4 + 5*5); // sqrt(50)
+    $byId = array_column($result, null, 'candidate_id');
+    assertClose(3/$denominator, $byId[1]['breakdown'][1]['normalized'], 0.000001, 'r untuk skor 3');
+    assertClose(4/$denominator, $byId[2]['breakdown'][1]['normalized'], 0.000001, 'r untuk skor 4');
+    assertClose(5/$denominator, $byId[3]['breakdown'][1]['normalized'], 0.000001, 'r untuk skor 5');
+});
+
+// T2 — Bobot 100% diterapkan tepat satu kali
+it('T2: Bobot ternaryormalisasi diterapkan tepat satu kali (weight/100)', function () {
+    $calc = new DecisionService();
+    $criteria = [['id' => 1, 'code' => 'C1', 'weight' => 100, 'type' => 'benefit']];
+    $matrix = [
+        ['candidate_id' => 1, 'scores' => [1 => 3]],
+        ['candidate_id' => 2, 'scores' => [1 => 4]],
+        ['candidate_id' => 3, 'scores' => [1 => 5]],
+    ];
+    $result = $calc->calculateTopsis($criteria, $matrix);
+    // weight=100 -> norm_weight=1.0 ->weighted_normalized == normalized
+    foreach ($result as $item) {
+        assertClose($item['breakdown'][1]['normalized'], $item['breakdown'][1]['weighted_normalized'], 0.000001);
+        assertEquals(100, $item['breakdown'][1]['weight']);
+        assertEquals(1.0, $item['breakdown'][1]['norm_weight']);
+    }
+});
+
+// T3 — Kriteria benefit: nilai tertinggi menang
+it('T3: Kriteria benefit — kandidat dengan skor tertinggi menduduki rank 1', function () {
+    $calc = new DecisionService();
+    $result = $calc->calculateTopsis([['id' => 1, 'weight' => 100, 'type' => 'benefit']], [
+        ['candidate_id' => 1, 'scores' => [1 => 3]],
+        ['candidate_id' => 2, 'scores' => [1 => 4]],
+        ['candidate_id' => 3, 'scores' => [1 => 5]],
+    ]);
+    $byId = array_column($result, null, 'candidate_id');
+    assertEquals(1, $byId[3]['rank'], 'Skor 5 harus rank 1 untuk benefit');
+    assertEquals(3, $byId[1]['rank'], 'Skor 3 harus rank 3 untuk benefit');
+});
+
+// T4 — Kriteria cost: nilai terendah menang
+it('T4: Kriteria cost — kandidat dengan skor terendah menduduki rank 1', function () {
+    $calc = new DecisionService();
+    $result = $calc->calculateTopsis([['id' => 1, 'weight' => 100, 'type' => 'cost']], [
+        ['candidate_id' => 1, 'scores' => [1 => 3]],
+        ['candidate_id' => 2, 'scores' => [1 => 4]],
+        ['candidate_id' => 3, 'scores' => [1 => 5]],
+    ]);
+    $byId = array_column($result, null, 'candidate_id');
+    assertEquals(1, $byId[1]['rank'], 'Skor 3 harus rank 1 untuk cost');
+    assertEquals(3, $byId[3]['rank'], 'Skor 5 harus rank 3 untuk cost');
+});
+
+// T5 — Kombinasi benefit + cost
+it('T5: Kombinasi benefit dan cost diproses benar', function () {
+    $calc = new DecisionService();
+    $criteria = [
+        ['id' => 1, 'weight' => 50, 'type' => 'benefit'],
+        ['id' => 2, 'weight' => 50, 'type' => 'cost'],
+    ];
+    $matrix = [
+        ['candidate_id' => 1, 'scores' => [1 => 5, 2 => 1]], // benefit tertinggi, cost terendah -> terbaik
+        ['candidate_id' => 2, 'scores' => [1 => 3, 2 => 3]],
+        ['candidate_id' => 3, 'scores' => [1 => 1, 2 => 5]], // terburuk
+    ];
+    $result = $calc->calculateTopsis($criteria, $matrix);
+    $byId = array_column($result, null, 'candidate_id');
+    assertEquals(1, $byId[1]['rank'], 'Kombinasi terbaik harus rank 1');
+    assertEquals(3, $byId[3]['rank'], 'Kombinasi terburuk harus rank 3');
+});
+
+// T6 — Skor preferensi tertinggi mendapat rank 1
+it('T6: Kandidat dengan preferensi tertinggi memperoleh peringkat pertama', function () {
+    $calc = new DecisionService();
+    $result = $calc->calculateTopsis(topsisCriteriaS1(), topsisMatrix(1));
+    assertEquals(1, $result[0]['rank'], 'Elemen pertama hasil urutan harus rank 1');
+    for ($i = 1; $i < count($result); $i++) {
+        assertTrue($result[$i-1]['final_score'] >= $result[$i]['final_score'], 'Urutan harus menurun');
+    }
+});
+
+// T7 — Output rentang [0,1]
+it('T7: Semua nilai preferensi TOPSIS berada pada rentang 0-1', function () {
+    $calc = new DecisionService();
+    foreach ([1, 2, 3] as $dm) {
+        foreach ($calc->calculateTopsis(topsisCriteriaS1(), topsisMatrix($dm)) as $item) {
+            $s = $item['final_score'];
+            assertTrue($s >= 0.0 && $s <= 1.0, "DM{$dm} kandidat {$item['candidate_id']}: {$s} di luar [0,1]");
+        }
+    }
+});
+
+// T8 — Semua kandidat identik -> 0.5, tanpa NaN/INF
+it('T8: Semua alternatif identik menghasilkan preferensi 0.5 tanpa NaN/INF', function () {
+    $calc = new DecisionService();
+    $criteria = [['id' => 1, 'weight' => 100, 'type' => 'benefit']];
+    $matrix = [
+        ['candidate_id' => 1, 'scores' => [1 => 5]],
+        ['candidate_id' => 2, 'scores' => [1 => 5]],
+        ['candidate_id' => 3, 'scores' => [1 => 5]],
+    ];
+    $result = $calc->calculateTopsis($criteria, $matrix);
+    foreach ($result as $item) {
+        assertEquals(0.5, $item['final_score'], 'Identik harus 0.5');
+        assertTrue(is_finite($item['final_score']), 'Harus finite');
+        assertTrue(!is_nan($item['final_score']), 'Harus bukan NaN');
+    }
+});
+
+// T9 — Matriks tidak lengkap ditolak
+it('T9: Matriks tidak lengkap (skor kriteria hilang) ditolak', function () {
+    $calc = new DecisionService();
+    $criteria = [
+        ['id' => 1, 'weight' => 50, 'type' => 'benefit'],
+        ['id' => 2, 'weight' => 50, 'type' => 'benefit'],
+    ];
+    $matrix = [
+        ['candidate_id' => 1, 'scores' => [1 => 5, 2 => 4]],
+        ['candidate_id' => 2, 'scores' => [1 => 3]], // kriteria 2 hilang
+    ];
+    try {
+        $calc->calculateTopsis($criteria, $matrix);
+        throw new RuntimeException('Harusnya ditolak');
+    } catch (InvalidArgumentException $e) {
+        assertTrue(str_contains($e->getMessage(), 'Nilai penilaian'), 'Pesan harus关于 nilai penilaian');
+    }
+});
+
+// T10 — Skor < 1 ditolak
+it('T10: Skor di bawah 1 ditolak', function () {
+    $calc = new DecisionService();
+    try {
+        $calc->calculateTopsis([['id' => 1, 'weight' => 100, 'type' => 'benefit']], [
+            ['candidate_id' => 1, 'scores' => [1 => 0]],
+        ]);
+        throw new RuntimeException('Harusnya ditolak');
+    } catch (InvalidArgumentException $e) {
+        assertTrue(str_contains($e->getMessage(), '1 sampai 5'), 'Pesan rentang skor');
+    }
+});
+
+// T11 — Skor > 5 ditolak
+it('T11: Skor di atas 5 ditolak', function () {
+    $calc = new DecisionService();
+    try {
+        $calc->calculateTopsis([['id' => 1, 'weight' => 100, 'type' => 'benefit']], [
+            ['candidate_id' => 1, 'scores' => [1 => 6]],
+        ]);
+        throw new RuntimeException('Harusnya ditolak');
+    } catch (InvalidArgumentException $e) {
+        assertTrue(str_contains($e->getMessage(), '1 sampai 5'), 'Pesan rentang skor');
+    }
+});
+
+// T12 — Total bobot bukan 100 ditolak
+it('T12: Total bobot bukan 100 ditolak', function () {
+    $calc = new DecisionService();
+    try {
+        $calc->calculateTopsis([['id' => 1, 'weight' => 99, 'type' => 'benefit']], [
+            ['candidate_id' => 1, 'scores' => [1 => 5]],
+        ]);
+        throw new RuntimeException('Harusnya ditolak');
+    } catch (InvalidArgumentException $e) {
+        assertEquals('Total bobot kriteria harus berjumlah tepat 100.', $e->getMessage());
+    }
+});
+
+// T13 — Bobot negatif ditolak
+it('T13: Bobot negatif ditolak', function () {
+    $calc = new DecisionService();
+    // Total tetap 100 agar validasi per-kriteria yang teruji (bukan validasi total)
+    $criteria = [
+        ['id' => 1, 'weight' => -10, 'type' => 'benefit'],
+        ['id' => 2, 'weight' => 110, 'type' => 'benefit'],
+    ];
+    try {
+        $calc->calculateTopsis($criteria, [
+            ['candidate_id' => 1, 'scores' => [1 => 5, 2 => 4]],
+        ]);
+        throw new RuntimeException('Harusnya ditolak');
+    } catch (InvalidArgumentException $e) {
+        assertTrue(str_contains($e->getMessage(), 'Bobot'), 'Pesan bobot: ' . $e->getMessage());
+    }
+});
+
+// T14 — Tipe kriteria tidak valid ditolak
+it('T14: Tipe kriteria di luar benefit/cost ditolak', function () {
+    $calc = new DecisionService();
+    try {
+        $calc->calculateTopsis([['id' => 1, 'weight' => 100, 'type' => 'invalid']], [
+            ['candidate_id' => 1, 'scores' => [1 => 5]],
+        ]);
+        throw new RuntimeException('Harusnya ditolak');
+    } catch (InvalidArgumentException $e) {
+        assertEquals('Tipe kriteria harus bernilai benefit atau cost.', $e->getMessage());
+    }
+});
+
+// T15 — Kriteria kosong ditolak
+it('T15: Kriteria kosong ditolak', function () {
+    $calc = new DecisionService();
+    try {
+        $calc->calculateTopsis([], [['candidate_id' => 1, 'scores' => [1 => 5]]]);
+        throw new RuntimeException('Harusnya ditolak');
+    } catch (InvalidArgumentException $e) {
+        assertEquals('Kriteria dan matriks penilaian tidak boleh kosong.', $e->getMessage());
+    }
+});
+
+// T16 — Kandidat kosong ditolak
+it('T16: Matriks kandidat kosong ditolak', function () {
+    $calc = new DecisionService();
+    try {
+        $calc->calculateTopsis([['id' => 1, 'weight' => 100, 'type' => 'benefit']], []);
+        throw new RuntimeException('Harusnya ditolak');
+    } catch (InvalidArgumentException $e) {
+        assertEquals('Kriteria dan matriks penilaian tidak boleh kosong.', $e->getMessage());
+    }
+});
+
+// T17 — Deterministik
+it('T17: Output deterministik untuk input yang sama', function () {
+    $calc = new DecisionService();
+    $a = $calc->calculateTopsis(topsisCriteriaS1(), topsisMatrix(2));
+    $b = $calc->calculateTopsis(topsisCriteriaS1(), topsisMatrix(2));
+    assertEquals($a, $b, 'Dua pemanggilan identik harus menghasilkan output identik');
+});
+
+// T18 — Duplikat kandidat ditolak (skor duplikat per kombinasi)
+it('T18: Duplikat kandidat dalam matriks ditolak', function () {
+    $calc = new DecisionService();
+    try {
+        $calc->calculateTopsis([['id' => 1, 'weight' => 100, 'type' => 'benefit']], [
+            ['candidate_id' => 1, 'scores' => [1 => 5]],
+            ['candidate_id' => 1, 'scores' => [1 => 4]],
+        ]);
+        throw new RuntimeException('Harusnya ditolak');
+    } catch (InvalidArgumentException $e) {
+        assertTrue(str_contains($e->getMessage(), 'Duplikat'), 'Pesan duplikat');
+    }
+});
+
+// T19 — Verifikasi preview Session 1 terhadap angka audit
+it('T19: Preview TOPSIS Session 1 cocok dengan angka audit (3 DM)', function () {
+    $calc = new DecisionService();
+    $reference = [
+        1 => [1 => 0.656679, 2 => 0.449105, 3 => 0.232170],
+        2 => [1 => 0.592144, 2 => 0.774674, 3 => 0.225326],
+        3 => [1 => 0.698325, 2 => 0.000000, 3 => 0.424859],
+    ];
+    foreach ($reference as $dm => $expected) {
+        $result = $calc->calculateTopsis(topsisCriteriaS1(), topsisMatrix($dm));
+        $actual = array_column($result, 'final_score', 'candidate_id');
+        foreach ($expected as $candidateId => $value) {
+            assertClose($value, (float)$actual[$candidateId], 0.00001, "DM{$dm} kandidat {$candidateId}");
+        }
+    }
+});
+
+// T20 — Simulasi Borda dengan skor TOPSIS (tanpa mengubah caller produksi)
+it('T20: Feed skor TOPSIS ke calculateBorda menghasilkan A=8, B=6, C=4', function () {
+    $calc = new DecisionService();
+    $dmScores = [];
+    foreach ([1, 2, 3] as $dm) {
+        $result = $calc->calculateTopsis(topsisCriteriaS1(), topsisMatrix($dm));
+        $dmScores[$dm] = array_column($result, 'final_score', 'candidate_id');
+    }
+    $candidates = [
+        ['id' => 1, 'name' => 'Kandidat A'],
+        ['id' => 2, 'name' => 'Kandidat B'],
+        ['id' => 3, 'name' => 'Kandidat C'],
+    ];
+    $borda = $calc->calculateBorda($dmScores, $candidates);
+    $points = array_column($borda['rankings'], 'borda_points', 'candidate_id');
+    assertEquals(8.0, (float)$points[1], 'Borda A');
+    assertEquals(6.0, (float)$points[2], 'Borda B');
+    assertEquals(4.0, (float)$points[3], 'Borda C');
+    assertEquals(18.0, (float)$borda['total_points_distributed'], 'Total poin Borda');
+});
+
+// ===== PHASE 3: INTEGRASI TOPSIS → BORDA (produksi) =====
+
+/** Helper user fixture (DM1/DM2/DM3), sesuai seeder Phase 1 */
+function p3Users(): array
+{
+    return [
+        1 => ['id' => 1, 'username' => 'dm1', 'role' => 'chair', 'name' => 'Ketua Panel'],
+        2 => ['id' => 2, 'username' => 'dm2', 'role' => 'member', 'name' => 'Anggota Panel 1'],
+        3 => ['id' => 3, 'username' => 'dm3', 'role' => 'member', 'name' => 'Anggota Panel 2'],
+    ];
+}
+
+it('P3-1: calculateTopsisMe() menghitung skor TOPSIS per DM secara terpisah', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    $db->exec('UPDATE assessment_status SET is_finalized = 1');
+
+    $reference = [
+        1 => [1 => 0.656679, 2 => 0.449105, 3 => 0.232170],
+        2 => [1 => 0.592144, 2 => 0.774674, 3 => 0.225326],
+        3 => [1 => 0.698325, 2 => 0.000000, 3 => 0.424859],
+    ];
+
+    foreach (p3Users() as $id => $user) {
+        $result = $app->calculateTopsisMe($user);
+        assertEquals($id, $result['dm_user_id'], "DM{$id} user id");
+        $scores = array_column($result['rankings'], 'final_score', 'candidate_id');
+        assertEquals(3, count($scores), "DM{$id} jumlah kandidat");
+        foreach ($reference[$id] as $candidateId => $expected) {
+            assertClose($expected, (float)$scores[$candidateId], 0.000001, "DM{$id} kandidat {$candidateId}");
+        }
+        foreach ($result['rankings'] as $item) {
+            assertTrue($item['final_score'] >= 0 && $item['final_score'] <= 1,
+                "DM{$id} kandidat {$item['candidate_id']} skor di luar [0,1]");
+        }
+        // Urutan hasil menurun
+        $ranks = $result['rankings'];
+        for ($i = 1; $i < count($ranks); $i++) {
+            assertTrue($ranks[$i-1]['final_score'] >= $ranks[$i]['final_score'], "DM{$id} urutan harus menurun");
+        }
+    }
+});
+
+it('P3-2: App::calculateBorda() memakai skor TOPSIS (0-1), bukan SAW (0-100)', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    $db->exec('UPDATE assessment_status SET is_finalized = 1');
+
+    $borda = $app->calculateBorda();
+
+    // dm_breakdown berisi skor yang dikirim ke calculateBorda().
+    // TOPSIS = [0,1]; SAW = [0,100]. Semua skor harus berada di [0,1].
+    foreach ($borda['dm_breakdown'] as $dmId => $candidates) {
+        assertEquals(3, count($candidates), "DM{$dmId} jumlah kandidat di breakdown");
+        foreach ($candidates as $candidateId => $detail) {
+            $score = (float)$detail['score'];
+            assertTrue($score >= 0 && $score <= 1,
+                "DM{$dmId} kandidat {$candidateId}: skor {$score} bukan rentang TOPSIS [0,1]");
+        }
+    }
+
+    $points = array_column($borda['rankings'], 'borda_points', 'candidate_id');
+    assertEquals(8.0, (float)$points[1], 'Borda A');
+    assertEquals(6.0, (float)$points[2], 'Borda B');
+    assertEquals(4.0, (float)$points[3], 'Borda C');
+    assertEquals(18.0, (float)$borda['total_points_distributed'], 'Total poin Borda');
+});
+
+it('P3-3: Skor di dm_breakdown Borda cocok dengan calculateTopsisMe()', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    $db->exec('UPDATE assessment_status SET is_finalized = 1');
+
+    $borda = $app->calculateBorda();
+
+    foreach (p3Users() as $id => $user) {
+        $topsis = $app->calculateTopsisMe($user);
+        $scores = array_column($topsis['rankings'], 'final_score', 'candidate_id');
+        foreach ($borda['dm_breakdown'][$id] as $candidateId => $detail) {
+            // calculateBorda() membulatkan ke 4 desimal untuk deteksi seri
+            assertClose(round((float)$scores[$candidateId], 4), (float)$detail['score'], 0.0001,
+                "DM{$id} kandidat {$candidateId}");
+        }
+    }
+});
+
+it('P3-4: Session isolation — kandidat & kriteria sesi lain tidak masuk Borda', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    $db->exec('UPDATE assessment_status SET is_finalized = 1');
+
+    // Fixture in-memory: sesi asing (id=99), bukan Session 2 produksi.
+    $db->exec("INSERT INTO decision_sessions (id, title, status, current_round) VALUES (99, 'Sesi Asing', 'assessment', 0)");
+    $db->exec("INSERT INTO candidates (id, session_id, name, is_finalized) VALUES (99, 99, 'Kandidat Asing', 1)");
+    $db->exec("INSERT INTO criteria (id, session_id, code, name, weight, type, is_finalized) VALUES (99, 99, 'CX', 'Kriteria Asing', 100, 'benefit', 1)");
+    $db->exec("INSERT INTO assessments (session_id, user_id, candidate_id, criterion_id, score) VALUES (99, 1, 99, 99, 5)");
+
+    $borda = $app->calculateBorda(1);
+    $candidateIds = array_column($borda['rankings'], 'candidate_id');
+    assertTrue(!in_array(99, $candidateIds, true), 'Kandidat sesi lain tidak boleh muncul di Borda');
+    assertEquals(3, count($candidateIds), 'Hanya 3 kandidat sesi 1');
+    sort($candidateIds);
+    assertEquals([1, 2, 3], $candidateIds, 'Kandidat harus exactly 1,2,3');
+
+    foreach ($borda['dm_breakdown'] as $dmId => $candidates) {
+        assertTrue(!isset($candidates[99]), "DM{$dmId} tidak boleh punya skor kandidat asing");
+    }
+});
+
+it('P3-5: calculateTopsisMe() menolak role voter (403)', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    $db->exec('UPDATE assessment_status SET is_finalized = 1');
+
+    $voter = ['id' => 4, 'username' => 'voter1', 'role' => 'voter', 'name' => 'Pemilih'];
+    try {
+        $app->calculateTopsisMe($voter);
+        throw new RuntimeException('Harusnya ditolak 403');
+    } catch (ApiError $e) {
+        assertEquals(403, $e->httpStatus, 'Status 403 untuk voter');
+    }
+});
+
+it('P3-6: Presisi penuh TOPSIS dipertahankan (final_score tidak dibulatkan 6 desimal)', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    $db->exec('UPDATE assessment_status SET is_finalized = 1');
+
+    $result = $app->calculateTopsisMe(p3Users()[1]);
+    $hasMoreThan6Decimals = false;
+    foreach ($result['rankings'] as $item) {
+        $scaled = $item['final_score'] * 1000000;
+        if (abs($scaled - round($scaled)) > 0.000001) {
+            $hasMoreThan6Decimals = true;
+            break;
+        }
+    }
+    assertTrue($hasMoreThan6Decimals, 'final_score harus presisi penuh (>6 desimal)');
+});
+
+it('P3-7: Borda belum tersedia sebelum seluruh DM memfinalisasi', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    // Default: belum ada yang final
+    try {
+        $app->calculateBorda();
+        throw new RuntimeException('Harusnya ditolak 409');
+    } catch (ApiError $e) {
+        assertEquals(409, $e->httpStatus, 'Status 409 saat belum final');
+    }
+});
+
+it('P3-8: calculateTopsisMe() menolak DM yang belum finalisasi (409)', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    // Default: assessment_status is_finalized = 0
+    try {
+        $app->calculateTopsisMe(p3Users()[1]);
+        throw new RuntimeException('Harusnya ditolak 409');
+    } catch (ApiError $e) {
+        assertEquals(409, $e->httpStatus, 'Status 409 saat DM belum final');
+    }
+});
+
+// ===== PHASE 4: API TOPSIS — KONTRAK RESPONSE & KOMPATIBILITAS SAW =====
+
+it('P4-1: Kontrak response TOPSIS sesuai requirement frontend (method mengembalikan shape lengkap)', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    $db->exec('UPDATE assessment_status SET is_finalized = 1');
+
+    $result = $app->calculateTopsisMe(p3Users()[1]);
+
+    assertEquals(1, $result['dm_user_id'], 'dm_user_id');
+    assertEquals('Ketua Panel', $result['dm_name'], 'dm_name dari DB');
+    assertTrue(is_array($result['rankings']), 'rankings harus array');
+
+    $required = [
+        'candidate_id', 'candidate_name', 'final_score', 'd_plus', 'd_minus', 'rank', 'breakdown',
+    ];
+    foreach ($result['rankings'] as $item) {
+        foreach ($required as $key) {
+            assertTrue(array_key_exists($key, $item), "field {$key} harus ada");
+        }
+        assertTrue(is_int($item['candidate_id']), 'candidate_id bertipe int');
+        assertTrue(is_string($item['candidate_name']), 'candidate_name bertipe string');
+        assertTrue(is_float($item['final_score']), 'final_score bertipe float (number)');
+        assertTrue(is_int($item['rank']), 'rank bertipe int (number)');
+        assertTrue(is_float($item['d_plus']) && is_float($item['d_minus']), 'd_plus/d_minus bertipe float');
+        assertTrue(is_array($item['breakdown']), 'breakdown bertipe object');
+        assertTrue($item['final_score'] >= 0 && $item['final_score'] <= 1, 'final_score rentang [0,1]');
+    }
+});
+
+it('P4-2: Nama kandidat pada response TOPSIS berasal dari DB (bukan hardcode A/B/C)', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    $db->exec('UPDATE assessment_status SET is_finalized = 1');
+
+    $db->exec("UPDATE candidates SET name = 'Nama Kandidat Khusus Dari DB' WHERE id = 1");
+    $result = $app->calculateTopsisMe(p3Users()[1]);
+    $names = array_column($result['rankings'], 'candidate_name', 'candidate_id');
+
+    assertEquals('Nama Kandidat Khusus Dari DB', $names[1], 'nama kandidat dari DB');
+});
+
+it('P4-3: Isolasi sesi pada endpoint TOPSIS personal (kandidat & assessment sesi lain diabaikan)', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    $db->exec('UPDATE assessment_status SET is_finalized = 1');
+
+    // Fixture in-memory, bukan Session 2 produksi.
+    $db->exec("INSERT INTO decision_sessions (id, title, status, current_round) VALUES (99, 'Sesi Asing', 'assessment', 0)");
+    $db->exec("INSERT INTO candidates (id, session_id, name, is_finalized) VALUES (99, 99, 'Kandidat Asing', 1)");
+    $db->exec("INSERT INTO criteria (id, session_id, code, name, weight, type, is_finalized) VALUES (99, 99, 'CX', 'Kriteria Asing', 100, 'benefit', 1)");
+    $db->exec("INSERT INTO assessments (session_id, user_id, candidate_id, criterion_id, score) VALUES (99, 1, 99, 99, 5)");
+
+    $result = $app->calculateTopsisMe(p3Users()[1], 1);
+    $ids = array_column($result['rankings'], 'candidate_id');
+    sort($ids);
+    assertEquals([1, 2, 3], $ids, 'hanya kandidat sesi 1');
+});
+
+it('P4-4: Endpoint SAW legacy tetap kompatibel (kontrak & rentang 0-100 tidak berubah)', function () {
+    $db = createTestDb();
+    $app = new App($db);
+    $db->exec('UPDATE assessment_status SET is_finalized = 1');
+
+    $saw = $app->calculateSawMe(p3Users()[1]);
+    assertEquals(1, $saw['dm_user_id'], 'SAW dm_user_id');
+    assertEquals(3, count($saw['rankings']), 'SAW jumlah kandidat');
+    foreach ($saw['rankings'] as $item) {
+        assertTrue(array_key_exists('final_score', $item), 'SAW final_score tetap ada');
+        assertTrue(array_key_exists('candidate_name', $item), 'SAW candidate_name tetap ada');
+        assertTrue($item['final_score'] >= 0 && $item['final_score'] <= 100, 'SAW tetap rentang [0,100]');
+    }
+});
+
 echo PHP_EOL . "=== RINGKASAN HASIL TEST ===" . PHP_EOL;
 echo "Total Lulus : {$passed}" . PHP_EOL;
 echo "Total Gagal : {$failed}" . PHP_EOL;

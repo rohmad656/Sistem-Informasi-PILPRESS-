@@ -23,7 +23,7 @@ import { useToast } from '@/components/ui/Toast';
 import type {
   VotingStatusResponse,
   Candidate,
-  SawResponse,
+  TopsisResponse,
   BordaResponse,
   ElectionDetail,
   ElectorateVoterStatus,
@@ -225,7 +225,7 @@ interface OfficialReportProps {
   election: ElectionDetail | null;
   criteria: Criterion[];
   candidates: Candidate[];
-  saw: SawResponse | null;
+  topsis: TopsisResponse | null;
   borda: BordaResponse | null;
   electorate: ElectorateVoterStatus[];
   evaluation: VotingEvaluation | null;
@@ -239,7 +239,7 @@ const OfficialDecisionReport: React.FC<OfficialReportProps> = ({
   election,
   criteria,
   candidates,
-  saw,
+  topsis,
   borda,
   electorate,
   evaluation,
@@ -321,10 +321,13 @@ const OfficialDecisionReport: React.FC<OfficialReportProps> = ({
       <section className="report-section mt-5">
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-navy-800">3. Dasar Pengambilan Keputusan</h3>
         <p className="text-sm leading-relaxed text-slate-700">
-          Keputusan dihasilkan oleh sistem pendukung keputusan kelompok melalui tahapan: penilaian
-          kriteria dengan metode SAW, agregasi preferensi dengan metode Borda, pemungutan suara panel,
-          dan pengesahan oleh Ketua Panel. Seluruh angka pada berita acara ini bersumber dari data resmi
-          siklus yang tersimpan di sistem; tidak ada nilai yang direkayasa saat pencetakan.
+          Keputusan disahkan melalui tahapan penilaian kriteria, agregasi preferensi panel, pemungutan
+          suara, dan pengesahan oleh Ketua Panel. Data historis tidak menyimpan metadata metode
+          perhitungan yang digunakan pada saat pengesahan, sehingga berita acara ini tidak menyatakan
+          secara definitif metodologi asli keputusan tersebut. Bagian 8 dan 9 menampilkan hasil
+          perhitungan terkini — TOPSIS untuk penilaian multikriteria dan Borda untuk agregasi ranking —
+          sebagai informasi tambahan, bukan sebagai dasar asli pengesahan. Angka voting dan keputusan
+          final bersumber dari data resmi yang tersimpan; tidak ada nilai yang direkayasa saat pencetakan.
         </p>
       </section>
 
@@ -423,28 +426,32 @@ const OfficialDecisionReport: React.FC<OfficialReportProps> = ({
         )}
       </section>
 
-      {/* 8. Hasil Penilaian SAW */}
+      {/* 8. Hasil Penilaian TOPSIS */}
       <section className="report-section mt-6">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-navy-800">
-          8. Hasil Penilaian SAW{saw ? ` — Penilaian ${saw.dm_name}` : ''}
+          8. Hasil Penilaian TOPSIS{topsis ? ` — Penilaian ${topsis.dm_name}` : ''}
         </h3>
-        {!saw || saw.rankings.length === 0 ? (
-          <p className="text-sm text-slate-500">Data hasil SAW tidak tersedia.</p>
+        <p className="mb-2 text-xs italic text-slate-500">
+          Catatan metodologi: hasil TOPSIS di bawah dihitung ulang dengan metodologi terkini untuk
+          keperluan tampilan. Angka ini bukan bukti bahwa keputusan historis disahkan berdasarkan TOPSIS.
+        </p>
+        {!topsis || topsis.rankings.length === 0 ? (
+          <p className="text-sm text-slate-500">Data hasil TOPSIS tidak tersedia.</p>
         ) : (
           <table className="report-table w-full border-collapse text-sm">
             <thead>
               <tr className="bg-slate-100 text-left">
                 <th className="border border-slate-300 px-3 py-2">Peringkat</th>
                 <th className="border border-slate-300 px-3 py-2">Kandidat</th>
-                <th className="border border-slate-300 px-3 py-2 text-right">Nilai Akhir</th>
+                <th className="border border-slate-300 px-3 py-2 text-right">Nilai Preferensi</th>
               </tr>
             </thead>
             <tbody>
-              {saw.rankings.map((row) => (
+              {topsis.rankings.map((row) => (
                 <tr key={row.candidate_id}>
                   <td className="border border-slate-300 px-3 py-2">{row.rank}</td>
                   <td className="border border-slate-300 px-3 py-2">{row.candidate_name}</td>
-                  <td className="border border-slate-300 px-3 py-2 text-right font-mono">{row.final_score.toFixed(4)}</td>
+                  <td className="border border-slate-300 px-3 py-2 text-right font-mono">{row.final_score.toFixed(6)}</td>
                 </tr>
               ))}
             </tbody>
@@ -624,12 +631,12 @@ export const FinalDecisionPage: React.FC = () => {
     retry: false,
   });
 
-  const sawQuery = useQuery({
-    queryKey: ['results', 'saw', 'me'],
+  const topsisQuery = useQuery({
+    queryKey: ['results', 'topsis', 'me'],
     queryFn: async () => {
-      const res = await api.getSawResults();
+      const res = await api.getTopsisResults();
       if (res.success && res.data) return res.data;
-      throw new Error(res.message || 'Gagal memuat hasil SAW');
+      throw new Error(res.message || 'Gagal memuat hasil TOPSIS');
     },
     enabled: hasDecision,
     retry: false,
@@ -1035,7 +1042,7 @@ export const FinalDecisionPage: React.FC = () => {
           election={electionQuery.data ?? null}
           criteria={criteriaQuery.data ?? []}
           candidates={candidatesQuery.data ?? []}
-          saw={sawQuery.data ?? null}
+          topsis={topsisQuery.data ?? null}
           borda={bordaQuery.data ?? null}
           electorate={statusData?.electorate ?? []}
           evaluation={evaluation}

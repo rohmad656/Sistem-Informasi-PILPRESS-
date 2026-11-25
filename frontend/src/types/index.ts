@@ -101,6 +101,39 @@ export interface SawResponse {
   rankings: SawRankingItem[];
 }
 
+/** Rincian satu kriteria pada perhitungan TOPSIS (dari backend). */
+export interface TopsisCriterionBreakdown {
+  criterion_id: number;
+  code: string;
+  raw_score: number;
+  sum_squares: number;
+  normalized: number;
+  weight: number;
+  norm_weight: number;
+  weighted_normalized: number;
+  ideal_positive: number;
+  ideal_negative: number;
+}
+
+/** Satu baris ranking TOPSIS personal DM. */
+export interface TopsisRankingItem {
+  candidate_id: number;
+  candidate_name: string;
+  /** Nilai preferensi TOPSIS, rentang 0–1, presisi penuh dari backend. */
+  final_score: number;
+  d_plus: number;
+  d_minus: number;
+  rank: number;
+  breakdown: Record<string, TopsisCriterionBreakdown>;
+}
+
+/** Response GET /results/topsis/me (atau /results/topsis). */
+export interface TopsisResponse {
+  dm_user_id: number;
+  dm_name: string;
+  rankings: TopsisRankingItem[];
+}
+
 export interface BordaRankingItem {
   candidate_id: number;
   candidate_name: string;

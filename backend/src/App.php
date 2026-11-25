@@ -1054,7 +1054,70 @@ final class App
     }
 
     /**
+     * Helper: Susun matriks penilaian satu DM dari assessment pada sesi yang diminta.
+     * Kandidat dan assessment sama-sama terikat session_id yang sama.
+     */
+    private function buildAssessmentMatrix(int $sessionId, int $userId, array $candidates): array
+    {
+        $matrix = [];
+        foreach ($candidates as $c) {
+            $matrix[$c['id']] = ['candidate_id' => (int)$c['id'], 'scores' => []];
+        }
+        $scores = $this->all(
+            'SELECT candidate_id, criterion_id, score FROM assessments WHERE session_id = ? AND user_id = ?',
+            [$sessionId, $userId]
+        );
+        foreach ($scores as $s) {
+            $matrix[$s['candidate_id']]['scores'][(int)$s['criterion_id']] = (int)$s['score'];
+        }
+        return array_values($matrix);
+    }
+
+    /**
+     * Perhitungan: Hasil TOPSIS Pribadi DM yang Sedang Login
+     * Dipakai oleh endpoint GET /results/topsis/me (dan alias /results/topsis).
+     * Identitas DM selalu berasal dari token; session_id hanya memilih sesi aktif.
+     */
+    public function calculateTopsisMe(?array $user, ?int $sessionId = null): array
+    {
+        $sessionId = $this->resolveSessionId($sessionId);
+        $u = $this->actor($user);
+        $this->bad(
+            !in_array($u['role'], ['chair', 'member'], true),
+            403,
+            'Akses ditolak. Hanya Ketua Panel dan Anggota Panel yang memiliki perhitungan TOPSIS pribadi.'
+        );
+        $statusRow = $this->one(
+            'SELECT is_finalized FROM assessment_status WHERE session_id = ? AND user_id = ?',
+            [$sessionId, $u['id']]
+        );
+        $this->bad(
+            empty($statusRow['is_finalized']),
+            409,
+            'Anda harus menyelesaikan dan memfinalisasi penilaian terlebih dahulu sebelum melihat hasil TOPSIS.'
+        );
+
+        $candidates = $this->listCandidates(null, $sessionId);
+        $criteria = $this->listCriteria(null, $sessionId);
+        $candidateMap = array_column($candidates, 'name', 'id');
+
+        $matrix = $this->buildAssessmentMatrix($sessionId, (int)$u['id'], $candidates);
+        $topsisResults = $this->calc->calculateTopsis($criteria, $matrix);
+
+        foreach ($topsisResults as &$item) {
+            $item['candidate_name'] = $candidateMap[$item['candidate_id']] ?? ('Kandidat ' . $item['candidate_id']);
+        }
+
+        return [
+            'dm_user_id' => (int)$u['id'],
+            'dm_name' => $u['name'],
+            'rankings' => $topsisResults,
+        ];
+    }
+
+    /**
      * Perhitungan: Agregasi Borda dari Ketiga Decision Maker
+     * Sumber skor: TOPSIS per DM (final_score presisi penuh), bukan SAW.
      */
     public function calculateBorda(?int $sessionId = null): array
     {
@@ -1078,19 +1141,9 @@ final class App
         $dmScores = [];
         foreach ($users as $usr) {
             $uId = (int)$usr['id'];
-            $matrix = [];
-            foreach ($candidates as $c) {
-                $matrix[$c['id']] = ['candidate_id' => (int)$c['id'], 'scores' => []];
-            }
-            $scores = $this->all(
-                'SELECT candidate_id, criterion_id, score FROM assessments WHERE session_id = ? AND user_id = ?',
-                [$sessionId, $uId]
-            );
-            foreach ($scores as $s) {
-                $matrix[$s['candidate_id']]['scores'][(int)$s['criterion_id']] = (int)$s['score'];
-            }
-            $sawOut = $this->calc->calculateSaw($criteria, array_values($matrix));
-            $dmScores[$uId] = array_column($sawOut, 'final_score', 'candidate_id');
+            $matrix = $this->buildAssessmentMatrix($sessionId, $uId, $candidates);
+            $topsisOut = $this->calc->calculateTopsis($criteria, $matrix);
+            $dmScores[$uId] = array_column($topsisOut, 'final_score', 'candidate_id');
         }
 
         return $this->calc->calculateBorda($dmScores, $candidates);
